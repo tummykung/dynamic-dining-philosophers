@@ -1,2 +1,5 @@
 /ebin
 .DS_Store
+*.aux
+*.gz
+*.log

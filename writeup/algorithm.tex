@@ -1,0 +1,117 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath, amssymb, enumerate, mathpazo, mathrsfs, fancyhdr, mathrsfs, graphicx, framed}
+\usepackage[tmargin = 1in, lmargin = 1.1in, rmargin = 1in, bmargin = 1in]{geometry}
+%%%%%%%%%%%%%%%%%%%%%%% IMPORTANT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                             %
+%       In the end, we should submit only algorithms.pdf      %
+%                                                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{courier}
+\usepackage{color}
+\usepackage{listings}
+\lstset{ %
+language=erlang,            % choose the language of the code
+basicstyle=\footnotesize,   % the size of the fonts that are used for the code
+numbers=left,               % where to put the line-numbers
+numberstyle=\footnotesize,  % the size of the fonts that are used for the line-numbers
+stepnumber=1,               % the step between two line-numbers. If it is 1 each line will be numbered
+numbersep=5pt,              % how far the line-numbers are from the code
+backgroundcolor=\color{white}, % choose the background color. You must add \usepackage{color}
+showspaces=false,           % show spaces adding particular underscores
+showstringspaces=false,     % underline spaces within strings
+showtabs=false,             % show tabs within strings adding particular underscores
+frame=single,               % adds a frame around the code
+tabsize=2,                  % sets default tabsize to 2 spaces
+captionpos=b,               % sets the caption-position to bottom
+breaklines=true,            % sets automatic line breaking
+breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+escapeinside={\%*}{*)} % if you want to add a comment within your code
+}
+
+%%% MACROS
+\newcommand{\pic}[2]{\begin{center}\includegraphics[scale=#1]{#2}\end{center}}
+\newcommand{\union}{\cup}
+\newcommand{\intersect}{\cap}
+\newcommand{\dx}{\,\mathrm{d}x}
+\newcommand{\comp}[1]{\overline{#1}}
+
+%%% MATH OPERATORS
+\DeclareMathOperator{\var}{Var}
+
+%%% PARAMETERS
+\setlength{\headheight}{15.2pt}
+\renewcommand{\tabcolsep}{1cm}
+
+%%% ENUMERATE
+\renewcommand{\theenumi}{\alph{enumi}}
+\renewcommand{\labelenumi}{(\theenumi)}
+\renewcommand{\theenumii}{\roman{enumii}}
+\renewcommand{\labelenumii}{\theenumii.}
+
+%%% PROBLEM ENVIRONMENT
+\newenvironment{problem}[1]{
+\medskip \hrule \medskip
+\noindent {\bf Problem #1.}
+}{
+\medskip \hrule \medskip
+}
+
+%%% SOLUTION ENVIRONMENT
+\newenvironment{solution}{\noindent{\bf Solution.} }{
+
+\hfill$\square$}
+
+\begin{document}
+\pagestyle{fancy}
+
+\lhead{Tum C., Patrick L., Cory P.
+}
+\chead{\bf{Math 182E}}
+\rhead{March 13, 2014}
+
+\begin{center} \Large Algorithms: Dynamic Dining Philosophers \end{center}
+
+
+\begin{problem}{1}
+	Something something. In case we want a table, here it is.
+	\begin{center}
+		\begin{tabular}{ccccc}
+			\hline \\[-1em]
+			26.8 & 26.3 & 28.03 & 28.5 & 26.3 \\
+			31.9 & 28.5 & 27.2 & 20.9 & 27.5 \\
+			28.0 & 18.6 & 22.3 & 25.0 & 31.5 \\\hline
+		\end{tabular}
+	\end{center}
+	\begin{enumerate}
+		\item My first point.
+		\item My second point.
+	\end{enumerate}
+\end{problem}
+
+\begin{solution}
+\begin{enumerate}
+\item Here is the code
+\begin{lstlisting}
+infinite_loop(Ref, Nodel, Neighbors) ->
+    spelling, Node} ! {self(), Ref, become_hungry},
+    % {spelling, Node} ! {self(), Ref, stop_eating},
+    % {spelling, Node} ! {self(), Ref, leave},
+    receive
+        {Ref, eating} ->
+        print("~p is eating.~n", [Ref]);
+        {Ref, gone} ->
+        print("~p is gone.~n", [Ref]);
+        Reply ->
+        print("Got unexpected message: ~p~n", [Reply])
+        after ?TIMEOUT -> print("Timed out waiting for reply!")
+    end,
+    infinite_loop(Ref, Nodel, Neighbors)
+end.
+\end{lstlisting}
+
+\end{enumerate}
+\end{solution}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+\end{document}
