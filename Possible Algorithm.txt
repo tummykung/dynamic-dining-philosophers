@@ -1,0 +1,12 @@
+Possible Algorithm
+initially p joining: Sends message to all neighbors saying he wants to join
+
+p joining to thinking: When p joins, it will send a message to all its
+neighbors saying it wants to join. Provided the neighbors stay
+in the network long enough, they receive the message and send back
+an ok message. Once the process has an ok, it will create a token for each neighbor, send that token to that neighbor, and then become thinking. The message could be send using Erlang connections similar to the last HW.
+
+p thinking next: When p decides to become hungry, it will send out a message to all its neighbors requesting forks. If he has all the forks, obviously he will eat. If he gets a request for a fork he already has, he sends it if its dirty and keeps it if its clean. Very similar to the algorithm in class.
+
+p to leaving: Anytime a process wants to leave, it sends a message to leeave and a request for the fork. The other process must acklowledge the process wants to leave and then send back the fork. Only when all neighbors have acklowledged and sent back the fork can the process leave.
+
