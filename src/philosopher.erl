@@ -42,7 +42,7 @@ main(Params) ->
         register(philosopher, self()),
 
         Ref = make_ref(), % make a ref so I know I got a valid response back
-        infinite_loop(Ref, NodeName, Neighbors)
+        philosophize(Ref, joining, NodeName, Neighbors)
 
         % PROTOCOL
 
@@ -57,9 +57,12 @@ main(Params) ->
     end,
     halt().
 
-%% im pretty sure that the message passing should be the other way around since we are only writing the philosophers' code and not the external controller's. Was the infinite_loop intended to be a test controller? Also, should we keep using NewRef or just use NewRef for eating?
+%% im pretty sure that the message passing should be the other way around since 
+%%we are only writing the philosophers' code and not the external controller's. 
+%%Was the infinite_loop intended to be a test controller? Also, should we keep using NewRef or just use NewRef for eating?
 
-%philosophize(Ref, joining, Node, Neighbors)->
+philosophize(Ref, joining, Node, Neighbors)->
+	philosophize(Ref, thinking, Node, Neighbors); %this seems a bit unneccessary
 philosophize(Ref, thinking, Node, Neighbors)->
 	receive
 	   {self(), NewRef, leave} ->
