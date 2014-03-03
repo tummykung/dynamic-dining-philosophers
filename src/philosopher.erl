@@ -57,31 +57,45 @@ main(Params) ->
     end,
     halt().
 
-%% im pretty sure that the message passing should be the other way around since we are only writing the philosophers' code and not the external controller's. Was the infinite_loop intended to be a test controller?
+%% im pretty sure that the message passing should be the other way around since we are only writing the philosophers' code and not the external controller's. Was the infinite_loop intended to be a test controller? Also, should we keep using NewRef or just use NewRef for eating?
 
+%philosophize(Ref, joining, Node, Neighbors)->
 philosophize(Ref, thinking, Node, Neighbors)->
 	receive
+	   {self(), NewRef, leave} ->
+		   io:format("~p is leaving ", [self()]),
+		   philosophize(NewRef, leaving, Node, Neighbors);
 	   {self(), NewRef, become_hungry} ->
-		   philosophize(Ref, hungry, Node, Neighbors)
+		   philosophize(NewRef, hungry, Node, Neighbors)
 	after ?TIMEOUT -> print("Timed out waiting for reply!")
 	end;
 philosophize(Ref, hungry, Node, Neighbors)->
-	%receive
-	%   {self(), Ref, Fork} ->
+	receive
+	    {self(), NewRef, leave} ->
+		   io:format("~p is leaving ", [self()]),
+		   philosophize(NewRef, leaving, Node, Neighbors);	
+	%   {self(), NewRef, Fork} ->  AND/OR CHECK IF ALL NEIGHBORS ARE NOT EATING?
 		% check if has all forks
-		% continue in 
+		% continue with philosophize(NewRef, 
+	    
 	%end;
 
 	% want to receive all forks and then start eating
-	{controller, Node} ! {Ref, eating},
-	philosophize(Ref, eating, Node, Neighbors);
+	{controller, Node} ! {NewRef, eating},
+	philosophize(Ref, eating, Node, Neighbors)
+	end;
 philosophize(Ref, eating, Node, Neighbors)->
 	receive
-	   {self(), Ref, stop_eating} ->
+	   {self(), NewRef, stop_eating} ->
+		% handle forks and hygenity if doing that
+		philosophize(NewRef, thinking, Node, Neighbors)
+	   {self(), NewRef, leave} ->
+
 
    	after ?TIMEOUT -> print("Timed out waiting for reply!")
-	end. 
-	
+	end; 
+philosophize(Ref, leaving, Node, Neighbors)->
+	{controller, Node} ! {Ref, gone}.
 
 %infinite_loop(Ref, Nodel, Neighbors) ->
 %    {spelling, Node} ! {self(), Ref, become_hungry},
