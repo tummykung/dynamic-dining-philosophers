@@ -62,22 +62,25 @@ main(Params) ->
 %%Was the infinite_loop intended to be a test controller? Also, should we keep using NewRef or just use NewRef for eating?
 
 philosophize(Ref, joining, Node, Neighbors)->
+	print("joining"),
 	philosophize(Ref, thinking, Node, Neighbors); %this seems a bit unneccessary
 philosophize(Ref, thinking, Node, Neighbors)->
 	receive
 	   {self(), NewRef, leave} ->
-		   io:format("~p is leaving ", [self()]),
+		   print("leaving"),
 		   philosophize(NewRef, leaving, Node, Neighbors);
 	   {self(), NewRef, become_hungry} ->
+		   print("becoming hungry"),
 		   philosophize(NewRef, hungry, Node, Neighbors)
 	after ?TIMEOUT -> print("Timed out waiting for reply!")
 	end;
 philosophize(Ref, hungry, Node, Neighbors)->
 	receive
 	    {self(), NewRef, leave} ->
-		   io:format("~p is leaving ", [self()]),
-		   philosophize(NewRef, leaving, Node, Neighbors);	
+		    print("leaving"),
+		    philosophize(NewRef, leaving, Node, Neighbors);	
 	%   {self(), NewRef, Fork} ->  AND/OR CHECK IF ALL NEIGHBORS ARE NOT EATING?
+		%print("got fork"),
 		% check if has all forks
 		% continue with philosophize(NewRef, 
 	    
@@ -85,16 +88,19 @@ philosophize(Ref, hungry, Node, Neighbors)->
 
 	% want to receive all forks and then start eating
 	{controller, Node} ! {NewRef, eating},
+	print("eating"),
 	philosophize(Ref, eating, Node, Neighbors)
 	end;
 philosophize(Ref, eating, Node, Neighbors)->
 	receive
 	   {self(), NewRef, stop_eating} ->
 		% handle forks and hygenity if doing that
-		philosophize(NewRef, thinking, Node, Neighbors)
+		print("stopping eating"),
+		philosophize(NewRef, thinking, Node, Neighbors);
 	   {self(), NewRef, leave} ->
-
-
+		print("stopping eating and leaving"),
+		%get rid of forks
+		philosophize(NewRef, leaving, Node, Neighbors)
    	after ?TIMEOUT -> print("Timed out waiting for reply!")
 	end; 
 philosophize(Ref, leaving, Node, Neighbors)->
@@ -152,9 +158,9 @@ get_formatted_time() ->
 % print/1
 % includes system time.
 print(To_Print) ->
-    io:format(get_formatted_time() ++ ": " ++ To_Print).
+    io:format(get_formatted_time() ++ ": " ++ To_Print ++ "~n").
 
 % print/2
 print(To_Print, Options) ->
-    io:format(get_formatted_time() ++ ": " ++ To_Print, Options).
+    io:format(get_formatted_time() ++ ": " ++ To_Print, Options ++ "~n").
     
