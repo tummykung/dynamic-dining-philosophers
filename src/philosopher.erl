@@ -57,21 +57,47 @@ main(Params) ->
     end,
     halt().
 
-infinite_loop(Ref, Nodel, Neighbors) ->
-    spelling, Node} ! {self(), Ref, become_hungry},
+%% im pretty sure that the message passing should be the other way around since we are only writing the philosophers' code and not the external controller's. Was the infinite_loop intended to be a test controller?
+
+philosophize(Ref, thinking, Node, Neighbors)->
+	receive
+	   {self(), NewRef, become_hungry} ->
+		   philosophize(Ref, hungry, Node, Neighbors)
+	after ?TIMEOUT -> print("Timed out waiting for reply!")
+	end;
+philosophize(Ref, hungry, Node, Neighbors)->
+	%receive
+	%   {self(), Ref, Fork} ->
+		% check if has all forks
+		% continue in 
+	%end;
+
+	% want to receive all forks and then start eating
+	{controller, Node} ! {Ref, eating},
+	philosophize(Ref, eating, Node, Neighbors);
+philosophize(Ref, eating, Node, Neighbors)->
+	receive
+	   {self(), Ref, stop_eating} ->
+
+   	after ?TIMEOUT -> print("Timed out waiting for reply!")
+	end. 
+	
+
+%infinite_loop(Ref, Nodel, Neighbors) ->
+%    {spelling, Node} ! {self(), Ref, become_hungry},
     % {spelling, Node} ! {self(), Ref, stop_eating},
     % {spelling, Node} ! {self(), Ref, leave},
-    receive
-        {Ref, eating} ->
-        print("~p is eating.~n", [Ref]);
-        {Ref, gone} ->
-        print("~p is gone.~n", [Ref]);
-        Reply ->
-        print("Got unexpected message: ~p~n", [Reply])
-        after ?TIMEOUT -> print("Timed out waiting for reply!")
-    end,
-    infinite_loop(Ref, Nodel, Neighbors)
-end.
+%    receive
+%        {Ref, eating} ->
+%        print("~p is eating.~n", [Ref]);
+%        {Ref, gone} ->
+%        print("~p is gone.~n", [Ref]);
+%        Reply ->
+%        print("Got unexpected message: ~p~n", [Reply])
+%        after ?TIMEOUT -> print("Timed out waiting for reply!")
+%    end,
+%    infinite_loop(Ref, Nodel, Neighbors)
+%end.
 
 %% ====================================================================
 %%                        Utility Functions
