@@ -63,12 +63,37 @@ main(Params) ->
 
 philosophize(Ref, joining, Node, Neighbors)->
 	print("joining"),
-	philosophize(Ref, thinking, Node, Neighbors); %this seems a bit unneccessary
-philosophize(Ref, thinking, Node, Neighbors)->
+	%philosophize(Ref, thinking, Node, Neighbors);
+    requestJoin(Ref, Node, Neighbors),
+    philosophize(Ref, thinking, Node, Neighbors).
+
+%requests each neighbor to join the network, one at a time,
+%when joining there shouldn't be any other requests for forks or leaving going on
+requestJoin(_,_,[])-> ok;
+requestJoin(Ref, Node, Neighbors)->
+    try
+        io:format("Process ~p at node ~p sending request to ~n~s", 
+            [self(), Node, hd(Neighbors)]),
+        io:format("After~n"),
+        {list_to_atom(hd(Neighbors)), Node} ! {self(), Ref, requestJoin},
+        receive
+            {Ref, ok} -> 
+                io:format("Got reply (from ~p): ok!", 
+                          [Ref);
+            Reply -> 
+                io:format("Got unexpected message: ~p~n", [Reply])
+        after ?TIMEOUT -> io:format("Timed out waiting for reply!")
+        end,
+        requestJoin(Ref, Node, tl(Neighbors))
+    catch
+        _:_ -> io:format("Error getting joining permission.~n")
+    end.
+
+philosophize(Ref, thinking, Node, Neighbors, ForksList)->
 	receive
 	   {self(), NewRef, leave} ->
-		   print("leaving"),
-		   philosophize(NewRef, leaving, Node, Neighbors);
+           print("leaving"),
+           philosophize(NewRef, leaving, Node, Neighbors);
 	   {self(), NewRef, become_hungry} ->
 		   print("becoming hungry"),
 		   philosophize(NewRef, hungry, Node, Neighbors)
