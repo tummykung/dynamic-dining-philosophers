@@ -193,12 +193,69 @@ philosophize(Ref, leaving, Node, ForksNeighborsList)->
 \end{lstlisting}
 \begin{enumerate}
 \underline{\large{Progress.}}
+
+$p.joining$ $\leadsto$ $p.thinking$
+
+\indent After philosopher $p$ has started up, it has given itself the $joining$ state. Assuming that the neighbors in which $p$ knows about are running correctly and the network runs as expected, all other philosophers are bound to hear $p$'s request to join eventually and thus $p$ is guaranteed to be given the state $thinking$.
+
+$p.hungry$ $\leadsto$ $p.eating$
+
+\indent When $hungry$, a philosopher $p$ must be passed the forks once all neighbor philosophers are not eating
+
+$p.leaving$ $\leadsto$ $p.gone$
+
+\indent
+
 \end{enumerate}
 
 \begin{enumerate}
 \underline{\large{Safety.}}
 
-In order to show that the algorithm satisfies the Safety requirement, we must show that the relevant stages satisfy the properties 
+In order to show that the algorithm satisfies the Safety requirement, we must show that the relevant stages satisfy the Safety properties:
+
+{\bfseries initially} {\it p.joining}
+
+\indent $p$ is given the state of $joining$ in which the philosopher $p$ is requesting to join the group and cannot possibly gain any other state until granted acceptance.
+
+{\it p.joining} {\bfseries next} {\it (p.joining \vee p.thinking)}
+
+\indent This requirement is satisfied because $p$ can be constantly trying to join the party but may be waiting infinitely or he/she can be granted the state of thinking (which is the only initial state in the party).
+
+{\it p.thinking} {\bfseries next} {\it (p.thinking \vee p.hungry \vee p.leaving)}
+
+\indent When thinking, the philosopher $p$ can continue thinking, the external controller can issue the order to become hungry, or the controller may tell the philosopher to leave. No other "state" transitions are available to the philosopher at the $thinking$ state. 
+
+{\it p.hungry} {\bfseries next} {\it (p.hungry \vee p.eating \vee p.leaving)}
+
+\indent If a philosopher $p$ is told by the external controller to become hungry, then it may be told to leave, it may become eating due to its hungry nature, or $p$ may remain hungry (which would likely imply a failure in the system).
+
+{\it p.eating} {\bfseries next} {\it (p.eating \vee p.thinking \vee p.leaving)}
+
+\indent
+
+{\it p.leaving} {\bfseries next} {\it (p.leaving \vee p.gone)}
+
+\indent
+
+{\it p.gone} {\bfseries next} {\it (p.gone)}
+
+\indent
+
+{\it p.eating} $\rightarrow \langle \forall q | q \in p.neighbors \rhd \not q.eating \rangle$
+(when a philosopher $p$ is $eating$, none of its neighbors is $eating$)
+
+\indent 
+
+{\it (p.thinking \vee p.hungry \vee p.eating)} $\langle \rightarrow \forall q | q \in p.neighbors \rhd p \in q.neighbors \rangle$
+(when a philosopher $p$ is $thinking$, $hungry$, or $eating$, each of $p$'s neighbors knows that $p$ is one of its neighbors)
+
+\indent
+
+{\it p.gone} $\rightarrow \langle \forall q  \rhd \not\in q.neighbors \rangle$
+(when a philosopher $p$ is $gone$, it is not in any other philosopher?s set of neighbors)
+
+\indent
+
 \end{enumerate}
 \end{solution}
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
