@@ -129,6 +129,7 @@ philosophize(Ref, eating, Node, Neighbors)->
    	after ?TIMEOUT -> print("Timed out waiting for reply!")
 	end; 
 philosophize(Ref, leaving, Node, Neighbors)->
+	%need to gather forks and then leave with them
 	{controller, Node} ! {Ref, gone}.
 
 %infinite_loop(Ref, Nodel, Neighbors) ->

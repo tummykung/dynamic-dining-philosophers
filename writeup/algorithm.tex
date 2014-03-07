@@ -83,13 +83,13 @@ escapeinside={\%*}{*)} % if you want to add a comment within your code
 		\end{tabular}
 	\end{center}
 	\begin{enumerate}
-		\item My first point.
-		\item My second point.
+		\item Progress
+		\item Safety
 	\end{enumerate}
 \end{problem}
 
 \begin{solution}
-\begin{enumerate}
+
 \item Here is the code
 \begin{lstlisting}
 infinite_loop(Ref, Nodel, Neighbors) ->
@@ -97,8 +97,8 @@ infinite_loop(Ref, Nodel, Neighbors) ->
     % {spelling, Node} ! {self(), Ref, stop_eating},
     % {spelling, Node} ! {self(), Ref, leave},
     receive
-        {Ref, eating} ->
-        print("~p is eating.~n", [Ref]);
+        %{Ref, eating} ->          
+        %print("~p is eating.~n", [Ref]);
         {Ref, gone} ->
         print("~p is gone.~n", [Ref]);
         Reply ->
@@ -109,6 +109,94 @@ infinite_loop(Ref, Nodel, Neighbors) ->
 end.
 \end{lstlisting}
 
+\begin{lstlisting}
+philosophize(Ref, joining, Node, Neighbors)->
+        print("joining"),
+        %philosophize(Ref, thinking, Node, Neighbors);
+    requestJoin(Ref, Node, Neighbors),
+    philosophize(Ref, thinking, Node, Neighbors).
+    
+%requests each neighbor to join the network, one at a time,
+%when joining there shouldn't be any other requests for forks or leaving going on
+requestJoin(_,_,[])-> ok;
+requestJoin(Ref, Node, Neighbors)->
+    try
+        io:format("Process ~p at node ~p sending request to ~n~s",
+            [self(), Node, hd(Neighbors)]),
+        io:format("After~n"),
+        {list_to_atom(hd(Neighbors)), Node} ! {self(), Ref, requestJoin},
+        receive
+            {Ref, ok} ->
+                io:format("Got reply (from ~p): ok!",
+                          [Ref);
+            Reply ->
+                io:format("Got unexpected message: ~p~n", [Reply])
+        after ?TIMEOUT -> io:format("Timed out waiting for reply!")
+        end,
+        requestJoin(Ref, Node, tl(Neighbors))
+    catch
+        _:_ -> io:format("Error getting joining permission.~n")
+    end.
+\end{lstlisting}
+
+\begin{lstlisting}
+philosophize(Ref, thinking, Node, Neighbors, ForksList)->
+        receive
+           {self(), NewRef, leave} ->
+           print("leaving"),
+           philosophize(NewRef, leaving, Node, Neighbors);
+           {self(), NewRef, become_hungry} ->
+                   print("becoming hungry"),
+                   philosophize(NewRef, hungry, Node, Neighbors)
+	after ?TIMEOUT -> print("Timed out waiting for reply!")
+        end;
+\end{lstlisting}
+
+\begin{lstlisting}
+philosophize(Ref, hungry, Node, Neighbors)->
+        receive
+            {self(), NewRef, leave} ->
+                    print("leaving"),
+                    philosophize(NewRef, leaving, Node, Neighbors);
+        %   {self(), NewRef, Fork} ->  AND/OR CHECK IF ALL NEIGHBORS ARE NOT EATING?
+                %print("got fork"),
+                % check if has all forks
+                % continue with philosophize(NewRef, 
+
+        %end;
+
+        % want to receive all forks and then start eating
+        {controller, Node} ! {NewRef, eating},
+        print("eating"),
+        philosophize(Ref, eating, Node, Neighbors)
+        end;
+\end{lstlisting}
+\begin{lstlisting}
+philosophize(Ref, eating, Node, Neighbors)->
+        receive
+           {self(), NewRef, stop_eating} ->
+                % handle forks and hygenity if doing that
+                print("stopping eating"),
+                philosophize(NewRef, thinking, Node, Neighbors);
+           {self(), NewRef, leave} ->
+                print("stopping eating and leaving"),
+                %get rid of forks
+                philosophize(NewRef, leaving, Node, Neighbors)
+        after ?TIMEOUT -> print("Timed out waiting for reply!")
+        end;
+\end{lstlisting}
+
+\begin{lstlisting}
+philosophize(Ref, leaving, Node, Neighbors)->
+        %need to gather forks and then leave with them
+        {controller, Node} ! {Ref, gone}.
+\end{lstlisting}
+\begin{enumerate}
+\underline{\large{Progress.}}
+\end{enumerate}
+
+\begin{enumerate}
+\underline{\large{Safety.}}
 \end{enumerate}
 \end{solution}
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
