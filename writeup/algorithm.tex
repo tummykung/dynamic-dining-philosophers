@@ -110,16 +110,16 @@ end.
 \end{lstlisting}
 
 \begin{lstlisting}
-philosophize(Ref, joining, Node, Neighbors)->
+philosophize(Ref, joining, Node, ForksNeighborsList)->
         print("joining"),
         %philosophize(Ref, thinking, Node, Neighbors);
-    requestJoin(Ref, Node, Neighbors),
-    philosophize(Ref, thinking, Node, Neighbors).
+    requestJoin(Ref, Node, ForksNeighborsList),
+    philosophize(Ref, thinking, ForksNeighborsList).
     
 %requests each neighbor to join the network, one at a time,
 %when joining there shouldn't be any other requests for forks or leaving going on
 requestJoin(_,_,[])-> ok;
-requestJoin(Ref, Node, Neighbors)->
+requestJoin(Ref, Node, ForksNeighborsList)->
     try
         io:format("Process ~p at node ~p sending request to ~n~s",
             [self(), Node, hd(Neighbors)]),
@@ -140,24 +140,24 @@ requestJoin(Ref, Node, Neighbors)->
 \end{lstlisting}
 
 \begin{lstlisting}
-philosophize(Ref, thinking, Node, Neighbors, ForksList)->
+philosophize(Ref, thinking, Node, ForksNeighborsList)->
         receive
            {self(), NewRef, leave} ->
            print("leaving"),
-           philosophize(NewRef, leaving, Node, Neighbors);
+           philosophize(NewRef, leaving, ForksNeighborsList);
            {self(), NewRef, become_hungry} ->
                    print("becoming hungry"),
-                   philosophize(NewRef, hungry, Node, Neighbors)
+                   philosophize(NewRef, hungry, ForksNeighborsList)
 	after ?TIMEOUT -> print("Timed out waiting for reply!")
         end;
 \end{lstlisting}
 
 \begin{lstlisting}
-philosophize(Ref, hungry, Node, Neighbors)->
+philosophize(Ref, hungry, Node, ForksNeighborsList)->
         receive
             {self(), NewRef, leave} ->
                     print("leaving"),
-                    philosophize(NewRef, leaving, Node, Neighbors);
+                    philosophize(NewRef, leaving, Node, ForksNeighborsList);
         %   {self(), NewRef, Fork} ->  AND/OR CHECK IF ALL NEIGHBORS ARE NOT EATING?
                 %print("got fork"),
                 % check if has all forks
@@ -168,26 +168,26 @@ philosophize(Ref, hungry, Node, Neighbors)->
         % want to receive all forks and then start eating
         {controller, Node} ! {NewRef, eating},
         print("eating"),
-        philosophize(Ref, eating, Node, Neighbors)
+        philosophize(Ref, eating, Node, ForksNeighborsList)
         end;
 \end{lstlisting}
 \begin{lstlisting}
-philosophize(Ref, eating, Node, Neighbors)->
+philosophize(Ref, eating, Node, ForksNeighborsList)->
         receive
            {self(), NewRef, stop_eating} ->
                 % handle forks and hygenity if doing that
                 print("stopping eating"),
-                philosophize(NewRef, thinking, Node, Neighbors);
+                philosophize(NewRef, thinking, Node, ForksNeighborsList);
            {self(), NewRef, leave} ->
                 print("stopping eating and leaving"),
                 %get rid of forks
-                philosophize(NewRef, leaving, Node, Neighbors)
+                philosophize(NewRef, leaving, Node, ForksNeighborsList)
         after ?TIMEOUT -> print("Timed out waiting for reply!")
         end;
 \end{lstlisting}
 
 \begin{lstlisting}
-philosophize(Ref, leaving, Node, Neighbors)->
+philosophize(Ref, leaving, Node, ForksNeighborsList)->
         %need to gather forks and then leave with them
         {controller, Node} ! {Ref, gone}.
 \end{lstlisting}
@@ -197,6 +197,8 @@ philosophize(Ref, leaving, Node, Neighbors)->
 
 \begin{enumerate}
 \underline{\large{Safety.}}
+
+In order to show that the algorithm satisfies the Safety requirement, we must show that the relevant stages satisfy the properties 
 \end{enumerate}
 \end{solution}
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
