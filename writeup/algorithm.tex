@@ -69,28 +69,25 @@ escapeinside={\%*}{*)} % if you want to add a comment within your code
 \chead{\bf{Math 182E}}
 \rhead{March 13, 2014}
 
-\begin{center} \Large Algorithms: Dynamic Dining Philosophers \end{center}
+\begin{center} \Large Algorithms: The Dynamic Dining Philosophers \end{center}
 
 
-\begin{problem}{1}
-	Something something. In case we want a table, here it is.
-	\begin{center}
-		\begin{tabular}{ccccc}
-			\hline \\[-1em]
-			26.8 & 26.3 & 28.03 & 28.5 & 26.3 \\
-			31.9 & 28.5 & 27.2 & 20.9 & 27.5 \\
-			28.0 & 18.6 & 22.3 & 25.0 & 31.5 \\\hline
-		\end{tabular}
-	\end{center}
-	\begin{enumerate}
-		\item Progress
-		\item Safety
-	\end{enumerate}
+\begin{problem}{Statement}
+We need to develop and implement a protocol that allows nodes to join or leave a running dining philosophers network at runtime in an orderly fashion while maintaining an acyclic priority graph, ensuring safety, and preventing deadlock.
+
+
+
+\subsection*{Allowed Assumption}
+
+\subsubsection*{External controllers}
+If a philosopher $p$ informs an external controller that it is \emph{eating}, the external controller will direct $p$ to become either \emph{thinking} or \emph{leaving} within a bounded time.
+External controllers will not send duplicate or invalid control signals.
+
 \end{problem}
 
 \begin{solution}
 
-\item Here is the code
+
 \begin{lstlisting}
 infinite_loop(Ref, Nodel, Neighbors) ->
     spelling, Node} ! {self(), Ref, become_hungry},
@@ -191,7 +188,6 @@ philosophize(Ref, leaving, Node, ForksNeighborsList)->
         %need to gather forks and then leave with them
         {controller, Node} ! {Ref, gone}.
 \end{lstlisting}
-\begin{enumerate}
 \underline{\large{Progress.}}
 
 $p.joining$ $\leadsto$ $p.thinking$
@@ -206,9 +202,7 @@ $p.leaving$ $\leadsto$ $p.gone$
 
 \indent
 
-\end{enumerate}
 
-\begin{enumerate}
 \underline{\large{Safety.}}
 
 In order to show that the algorithm satisfies the Safety requirement, we must show that the relevant stages satisfy the Safety properties:
@@ -217,23 +211,23 @@ In order to show that the algorithm satisfies the Safety requirement, we must sh
 
 \indent $p$ is given the state of $joining$ in which the philosopher $p$ is requesting to join the group and cannot possibly gain any other state until granted acceptance.
 
-{\it p.joining} {\bfseries next} {\it (p.joining \vee p.thinking)}
+{\it p.joining} {\bfseries next} {\it (p.joining $\vee$ p.thinking)}
 
 \indent This requirement is satisfied because $p$ can be constantly trying to join the party but may be waiting infinitely or he/she can be granted the state of thinking (which is the only initial state in the party).
 
-{\it p.thinking} {\bfseries next} {\it (p.thinking \vee p.hungry \vee p.leaving)}
+{\it p.thinking} {\bfseries next} {\it (p.thinking $\vee$ p.hungry $\vee$ p.leaving)}
 
 \indent When thinking, the philosopher $p$ can continue thinking, the external controller can issue the order to become hungry, or the controller may tell the philosopher to leave. No other "state" transitions are available to the philosopher at the $thinking$ state. 
 
-{\it p.hungry} {\bfseries next} {\it (p.hungry \vee p.eating \vee p.leaving)}
+{\it p.hungry} {\bfseries next} {\it (p.hungry $\vee$ p.eating $\vee$ p.leaving)}
 
 \indent If a philosopher $p$ is told by the external controller to become hungry, then it may be told to leave, it may become eating due to its hungry nature, or $p$ may remain hungry (which would likely imply a failure in the system).
 
-{\it p.eating} {\bfseries next} {\it (p.eating \vee p.thinking \vee p.leaving)}
+{\it p.eating} {\bfseries next} {\it (p.eating $\vee$ p.thinking $\vee$ p.leaving)}
 
 \indent
 
-{\it p.leaving} {\bfseries next} {\it (p.leaving \vee p.gone)}
+{\it p.leaving} {\bfseries next} {\it (p.leaving $\vee$ p.gone)}
 
 \indent
 
@@ -246,7 +240,7 @@ In order to show that the algorithm satisfies the Safety requirement, we must sh
 
 \indent 
 
-{\it (p.thinking \vee p.hungry \vee p.eating)} $\langle \rightarrow \forall q | q \in p.neighbors \rhd p \in q.neighbors \rangle$
+{\it (p.thinking $\vee$ p.hungry $\vee$ p.eating)} $\langle \rightarrow \forall q | q \in p.neighbors \rhd p \in q.neighbors \rangle$
 (when a philosopher $p$ is $thinking$, $hungry$, or $eating$, each of $p$'s neighbors knows that $p$ is one of its neighbors)
 
 \indent
@@ -256,7 +250,6 @@ In order to show that the algorithm satisfies the Safety requirement, we must sh
 
 \indent
 
-\end{enumerate}
 \end{solution}
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
