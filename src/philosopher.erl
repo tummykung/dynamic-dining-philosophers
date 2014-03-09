@@ -28,7 +28,7 @@ main(Params) ->
 
         % 0 or more additional parameters, each of which is the Erlang node
         % name of a neighbor of the philosopher.
-        Neighbors = tl(Params),
+        ForkNeighborsList = tl(Params),
 
         %% IMPORTANT: Start the empd daemon!
         os:cmd("epmd -daemon"),
@@ -42,7 +42,11 @@ main(Params) ->
         register(philosopher, self()),
 
         Ref = make_ref(), % make a ref so I know I got a valid response back
+<<<<<<< HEAD
         philosophize(Ref, joining, NodeName, Neighbors, dict:new())
+=======
+        philosophize(Ref, joining, NodeName, ForkForkNeighborsListList)
+>>>>>>> d8a963f980618d213b0ff8d254deb688ed998f72
 
         % PROTOCOL
 
@@ -57,17 +61,34 @@ main(Params) ->
     end,
     halt().
 
+<<<<<<< HEAD
 %requests each neighbor to join the network, one at a time,
 %when joining there shouldn't be any other requests for forks or leaving going on
 %If another process requests to join during the joining phase, hold onto it until
 %successfully joined and return it
 requestJoin(_,_,[],Joiner)-> Joiner;
 requestJoin(Ref, Node, Neighbors, Joiner)->
+=======
+%% im pretty sure that the message passing should be the other way around since 
+%%we are only writing the philosophers' code and not the external controller's. 
+%%Was the infinite_loop intended to be a test controller? Also, should we keep using NewRef or just use NewRef for eating?
+
+philosophize(Ref, joining, Node, ForkNeighborsList)->
+	print("joining"),
+	%philosophize(Ref, thinking, Node, ForkNeighborsList);
+    requestJoin(Ref, Node, ForkNeighborsList),
+    philosophize(Ref, thinking, Node, ForkNeighborsList).
+
+%requests each neighbor to join the network, one at a time,
+%when joining there shouldn't be any other requests for forks or leaving going on
+requestJoin(_,_,[])-> ok;
+requestJoin(Ref, Node, ForkNeighborsList)->
+>>>>>>> d8a963f980618d213b0ff8d254deb688ed998f72
     try
         io:format("Process ~p at node ~p sending request to ~n~s", 
-            [self(), Node, hd(Neighbors)]),
+            [self(), Node, hd(ForkNeighborsList)]),
         io:format("After~n"),
-        {list_to_atom(hd(Neighbors)), Node} ! {self(), Ref, requestJoin},
+        {list_to_atom(hd(ForkNeighborsList)), Node} ! {self(), Ref, requestJoin},
         receive
             {pid, Ref, ok} -> 
                 io:format("Got reply (from ~p): ok!", 
@@ -116,11 +137,16 @@ requestForks(Ref, Node, Neighbors, ForksList)->
                 io:format("Got unexpected message: ~p~n", [Reply])
         after ?TIMEOUT -> io:format("Timed out waiting for reply!")
         end,
+<<<<<<< HEAD
         requestJoin(Ref, Node, tl(Neighbors), ForksList)
+=======
+        requestJoin(Ref, Node, tl(ForkNeighborsList))
+>>>>>>> d8a963f980618d213b0ff8d254deb688ed998f72
     catch
         _:_ -> io:format("Error getting joining permission.~n")
     end.
 
+<<<<<<< HEAD
 createForks([],ForkList,_) -> ForkList;
 createForks(JoinRequests,ForkList,Ref) ->
     %create the fork and hold it
@@ -179,8 +205,52 @@ philosophize(Ref, eating, Node, Neighbors, ForksList)-> ok.
 %	end; 
 %philosophize(Ref, leaving, Node, Neighbors, ForksList)->
 %	{controller, Node} ! {Ref, gone}.
+=======
+philosophize(Ref, thinking, Node, ForkNeighborsList, ForksList)->
+	receive
+	   {self(), NewRef, leave} ->
+           print("leaving"),
+           philosophize(NewRef, leaving, Node, ForkNeighborsList);
+	   {self(), NewRef, become_hungry} ->
+		   print("becoming hungry"),
+		   philosophize(NewRef, hungry, Node, ForkNeighborsList)
+	after ?TIMEOUT -> print("Timed out waiting for reply!")
+	end;
+philosophize(Ref, hungry, Node, ForkNeighborsList)->
+	receive
+	    {self(), NewRef, leave} ->
+		    print("leaving"),
+		    philosophize(NewRef, leaving, Node, ForkNeighborsList);	
+	%   {self(), NewRef, Fork} ->  AND/OR CHECK IF ALL NEIGHBORS ARE NOT EATING?
+		%print("got fork"),
+		% check if has all forks
+		% continue with philosophize(NewRef, 
+	    
+	%end;
 
-%infinite_loop(Ref, Nodel, Neighbors) ->
+	% want to receive all forks and then start eating
+	{controller, Node} ! {NewRef, eating},
+	print("eating"),
+	philosophize(Ref, eating, Node, ForkNeighborsList)
+	end;
+philosophize(Ref, eating, Node, ForkNeighborsList)->
+	receive
+	   {self(), NewRef, stop_eating} ->
+		% handle forks and hygenity if doing that
+		print("stopping eating"),
+		philosophize(NewRef, thinking, Node, ForkNeighborsList);
+	   {self(), NewRef, leave} ->
+		print("stopping eating and leaving"),
+		%get rid of forks
+		philosophize(NewRef, leaving, Node, ForkNeighborsList)
+   	after ?TIMEOUT -> print("Timed out waiting for reply!")
+	end; 
+philosophize(Ref, leaving, Node, ForkNeighborsList)->
+	%need to gather forks and then leave with them
+	{controller, Node} ! {Ref, gone}.
+>>>>>>> d8a963f980618d213b0ff8d254deb688ed998f72
+
+%infinite_loop(Ref, Nodel, ForkNeighborsList) ->
 %    {spelling, Node} ! {self(), Ref, become_hungry},
     % {spelling, Node} ! {self(), Ref, stop_eating},
     % {spelling, Node} ! {self(), Ref, leave},
@@ -193,7 +263,7 @@ philosophize(Ref, eating, Node, Neighbors, ForksList)-> ok.
 %        print("Got unexpected message: ~p~n", [Reply])
 %        after ?TIMEOUT -> print("Timed out waiting for reply!")
 %    end,
-%    infinite_loop(Ref, Nodel, Neighbors)
+%    infinite_loop(Ref, Nodel, ForkNeighborsList)
 %end.
 
 %% ====================================================================

@@ -69,36 +69,33 @@ escapeinside={\%*}{*)} % if you want to add a comment within your code
 \chead{\bf{Math 182E}}
 \rhead{March 13, 2014}
 
-\begin{center} \Large Algorithms: Dynamic Dining Philosophers \end{center}
+\begin{center} \Large Algorithms: The Dynamic Dining Philosophers \end{center}
 
 
-\begin{problem}{1}
-	Something something. In case we want a table, here it is.
-	\begin{center}
-		\begin{tabular}{ccccc}
-			\hline \\[-1em]
-			26.8 & 26.3 & 28.03 & 28.5 & 26.3 \\
-			31.9 & 28.5 & 27.2 & 20.9 & 27.5 \\
-			28.0 & 18.6 & 22.3 & 25.0 & 31.5 \\\hline
-		\end{tabular}
-	\end{center}
-	\begin{enumerate}
-		\item My first point.
-		\item My second point.
-	\end{enumerate}
+\begin{problem}{Statement}
+We need to develop and implement a protocol that allows nodes to join or leave a running dining philosophers network at runtime in an orderly fashion while maintaining an acyclic priority graph, ensuring safety, and preventing deadlock.
+
+
+
+\subsection*{Allowed Assumption}
+
+\subsubsection*{External controllers}
+If a philosopher $p$ informs an external controller that it is \emph{eating}, the external controller will direct $p$ to become either \emph{thinking} or \emph{leaving} within a bounded time.
+External controllers will not send duplicate or invalid control signals.
+
 \end{problem}
 
 \begin{solution}
-\begin{enumerate}
-\item Here is the code
+
+
 \begin{lstlisting}
 infinite_loop(Ref, Nodel, Neighbors) ->
     spelling, Node} ! {self(), Ref, become_hungry},
     % {spelling, Node} ! {self(), Ref, stop_eating},
     % {spelling, Node} ! {self(), Ref, leave},
     receive
-        {Ref, eating} ->
-        print("~p is eating.~n", [Ref]);
+        %{Ref, eating} ->          
+        %print("~p is eating.~n", [Ref]);
         {Ref, gone} ->
         print("~p is gone.~n", [Ref]);
         Reply ->
@@ -109,7 +106,150 @@ infinite_loop(Ref, Nodel, Neighbors) ->
 end.
 \end{lstlisting}
 
-\end{enumerate}
+\begin{lstlisting}
+philosophize(Ref, joining, Node, ForksNeighborsList)->
+        print("joining"),
+        %philosophize(Ref, thinking, Node, Neighbors);
+    requestJoin(Ref, Node, ForksNeighborsList),
+    philosophize(Ref, thinking, ForksNeighborsList).
+    
+%requests each neighbor to join the network, one at a time,
+%when joining there shouldn't be any other requests for forks or leaving going on
+requestJoin(_,_,[])-> ok;
+requestJoin(Ref, Node, ForksNeighborsList)->
+    try
+        io:format("Process ~p at node ~p sending request to ~n~s",
+            [self(), Node, hd(Neighbors)]),
+        io:format("After~n"),
+        {list_to_atom(hd(Neighbors)), Node} ! {self(), Ref, requestJoin},
+        receive
+            {Ref, ok} ->
+                io:format("Got reply (from ~p): ok!",
+                          [Ref);
+            Reply ->
+                io:format("Got unexpected message: ~p~n", [Reply])
+        after ?TIMEOUT -> io:format("Timed out waiting for reply!")
+        end,
+        requestJoin(Ref, Node, tl(Neighbors))
+    catch
+        _:_ -> io:format("Error getting joining permission.~n")
+    end.
+\end{lstlisting}
+
+\begin{lstlisting}
+philosophize(Ref, thinking, Node, ForksNeighborsList)->
+        receive
+           {self(), NewRef, leave} ->
+           print("leaving"),
+           philosophize(NewRef, leaving, ForksNeighborsList);
+           {self(), NewRef, become_hungry} ->
+                   print("becoming hungry"),
+                   philosophize(NewRef, hungry, ForksNeighborsList)
+	after ?TIMEOUT -> print("Timed out waiting for reply!")
+        end;
+\end{lstlisting}
+
+\begin{lstlisting}
+philosophize(Ref, hungry, Node, ForksNeighborsList)->
+        receive
+            {self(), NewRef, leave} ->
+                    print("leaving"),
+                    philosophize(NewRef, leaving, Node, ForksNeighborsList);
+        %   {self(), NewRef, Fork} ->  AND/OR CHECK IF ALL NEIGHBORS ARE NOT EATING?
+                %print("got fork"),
+                % check if has all forks
+                % continue with philosophize(NewRef, 
+
+        %end;
+
+        % want to receive all forks and then start eating
+        {controller, Node} ! {NewRef, eating},
+        print("eating"),
+        philosophize(Ref, eating, Node, ForksNeighborsList)
+        end;
+\end{lstlisting}
+\begin{lstlisting}
+philosophize(Ref, eating, Node, ForksNeighborsList)->
+        receive
+           {self(), NewRef, stop_eating} ->
+                % handle forks and hygenity if doing that
+                print("stopping eating"),
+                philosophize(NewRef, thinking, Node, ForksNeighborsList);
+           {self(), NewRef, leave} ->
+                print("stopping eating and leaving"),
+                %get rid of forks
+                philosophize(NewRef, leaving, Node, ForksNeighborsList)
+        after ?TIMEOUT -> print("Timed out waiting for reply!")
+        end;
+\end{lstlisting}
+
+\begin{lstlisting}
+philosophize(Ref, leaving, Node, ForksNeighborsList)->
+        %need to gather forks and then leave with them
+        {controller, Node} ! {Ref, gone}.
+\end{lstlisting}
+\underline{\large{Progress.}}
+
+$p.joining$ $\leadsto$ $p.thinking$
+
+\indent After philosopher $p$ has started up, it has given itself the $joining$ state. Assuming that the neighbors in which $p$ knows about are running correctly and the network runs as expected, all other philosophers are bound to hear $p$'s request to join eventually and thus $p$ is guaranteed to be given the state $thinking$.
+
+$p.hungry$ $\leadsto$ $p.eating$
+
+\indent When $hungry$, a philosopher $p$ must be passed the forks once all neighbor philosophers are not eating
+
+$p.leaving$ $\leadsto$ $p.gone$
+
+\indent
+
+
+\underline{\large{Safety.}}
+
+In order to show that the algorithm satisfies the Safety requirement, we must show that the relevant stages satisfy the Safety properties:
+
+{\bfseries initially} {\it p.joining}
+
+\indent $p$ is given the state of $joining$ in which the philosopher $p$ is requesting to join the group and cannot possibly gain any other state until granted acceptance.
+
+{\it p.joining} {\bfseries next} {\it (p.joining $\vee$ p.thinking)}
+
+\indent This requirement is satisfied because $p$ can be constantly trying to join the party but may be waiting infinitely or he/she can be granted the state of thinking (which is the only initial state in the party).
+
+{\it p.thinking} {\bfseries next} {\it (p.thinking $\vee$ p.hungry $\vee$ p.leaving)}
+
+\indent When thinking, the philosopher $p$ can continue thinking, the external controller can issue the order to become hungry, or the controller may tell the philosopher to leave. No other "state" transitions are available to the philosopher at the $thinking$ state. 
+
+{\it p.hungry} {\bfseries next} {\it (p.hungry $\vee$ p.eating $\vee$ p.leaving)}
+
+\indent If a philosopher $p$ is told by the external controller to become hungry, then it may be told to leave, it may become eating due to its hungry nature, or $p$ may remain hungry (which would likely imply a failure in the system).
+
+{\it p.eating} {\bfseries next} {\it (p.eating $\vee$ p.thinking $\vee$ p.leaving)}
+
+\indent
+
+{\it p.leaving} {\bfseries next} {\it (p.leaving $\vee$ p.gone)}
+
+\indent
+
+{\it p.gone} {\bfseries next} {\it (p.gone)}
+
+\indent
+
+{\it p.eating} $\rightarrow \langle \forall q | q \in p.neighbors \rhd \not q.eating \rangle$
+(when a philosopher $p$ is $eating$, none of its neighbors is $eating$)
+
+\indent 
+
+{\it (p.thinking $\vee$ p.hungry $\vee$ p.eating)} $\langle \rightarrow \forall q | q \in p.neighbors \rhd p \in q.neighbors \rangle$
+(when a philosopher $p$ is $thinking$, $hungry$, or $eating$, each of $p$'s neighbors knows that $p$ is one of its neighbors)
+
+\indent
+
+{\it p.gone} $\rightarrow \langle \forall q  \rhd \not\in q.neighbors \rangle$
+(when a philosopher $p$ is $gone$, it is not in any other philosopher?s set of neighbors)
+
+\indent
+
 \end{solution}
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
