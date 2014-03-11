@@ -71,22 +71,97 @@ escapeinside={\%*}{*)} % if you want to add a comment within your code
 
 \begin{center} \Large Algorithms: The Dynamic Dining Philosophers \end{center}
 
+\section{Introduction}
 
-\begin{problem}{Statement}
+
+\subsection{Problem Statement}
 We need to develop and implement a protocol that allows nodes to join or leave a running dining philosophers network at runtime in an orderly fashion while maintaining an acyclic priority graph, ensuring safety, and preventing deadlock.
 
 
 
-\subsection*{Allowed Assumption}
+\section{Allowed Assumptions}
 
-\subsubsection*{External controllers}
+\begin{description}
+\item[External controllers (a1)]
 If a philosopher $p$ informs an external controller that it is \emph{eating}, the external controller will direct $p$ to become either \emph{thinking} or \emph{leaving} within a bounded time.
 External controllers will not send duplicate or invalid control signals.
+\end{description}
 
-\end{problem}
+\section{Solution}
+\subsection{Overview}
+Our solution is based on a hiegenic solution discussed in class. To avoid deadlocks, we maintain a priority graphs, in which the person with a higher priority gets to eat first when two of adjacent philosophers are hungry. We use a fork mechanism to represent the priority graph in a distributed fashion. There is exactly one fork per each edge between two nodes, where nodes represent philosophers. Each fork can be either \texttt{dirty} or \texttt{clean}. A clean fork implies that the person holding it has a higher priority than the person at the other end of an edge. Conversely, a dirty fork implies that the person holding it has a lower priority. In this assignment, we extend this algorithm to allow philosphers to join and leave the table, while still maintain the acyclic priority graph, ensuring safey, and preventing deadlock.
 
-\begin{solution}
 
+\section{Algorithms}
+
+\section{Proof of Correctness}
+
+\section{Proof of Progress}
+\underline{\large{Progress.}}
+
+$p.joining$ $\leadsto$ $p.thinking$
+
+\indent After philosopher $p$ has started up, it has given itself the $joining$ state. Assuming that the neighbors in which $p$ knows about are running correctly and the network runs as expected, all other philosophers are bound to hear $p$'s request to join eventually and thus $p$ is guaranteed to be given the state $thinking$.
+
+$p.hungry$ $\leadsto$ $p.eating$
+
+\indent When $hungry$, a philosopher $p$ must be passed the forks once all neighbor philosophers are not eating
+
+$p.leaving$ $\leadsto$ $p.gone$
+
+\indent
+
+
+\underline{\large{Safety.}}
+
+In order to show that the algorithm satisfies the Safety requirement, we must show that the relevant stages satisfy the Safety properties:
+
+{\bfseries initially} {\it p.joining}
+
+\indent $p$ is given the state of $joining$ in which the philosopher $p$ is requesting to join the group and cannot possibly gain any other state until granted acceptance.
+
+{\it p.joining} {\bfseries next} {\it (p.joining $\vee$ p.thinking)}
+
+\indent This requirement is satisfied because $p$ can be constantly trying to join the party but may be waiting infinitely or he/she can be granted the state of thinking (which is the only initial state in the party).
+
+{\it p.thinking} {\bfseries next} {\it (p.thinking $\vee$ p.hungry $\vee$ p.leaving)}
+
+\indent When thinking, the philosopher $p$ can continue thinking, the external controller can issue the order to become hungry, or the controller may tell the philosopher to leave. No other "state" transitions are available to the philosopher at the $thinking$ state. 
+
+{\it p.hungry} {\bfseries next} {\it (p.hungry $\vee$ p.eating $\vee$ p.leaving)}
+
+\indent If a philosopher $p$ is told by the external controller to become hungry, then it may be told to leave, it may become eating due to its hungry nature, or $p$ may remain hungry (which would likely imply a failure in the system).
+
+{\it p.eating} {\bfseries next} {\it (p.eating $\vee$ p.thinking $\vee$ p.leaving)}
+
+\indent
+
+{\it p.leaving} {\bfseries next} {\it (p.leaving $\vee$ p.gone)}
+
+\indent
+
+{\it p.gone} {\bfseries next} {\it (p.gone)}
+
+\indent
+
+{\it p.eating} $\rightarrow \langle \forall q | q \in p.neighbors \rhd \not q.eating \rangle$
+(when a philosopher $p$ is $eating$, none of its neighbors is $eating$)
+
+\indent 
+
+{\it (p.thinking $\vee$ p.hungry $\vee$ p.eating)} $\langle \rightarrow \forall q | q \in p.neighbors \rhd p \in q.neighbors \rangle$
+(when a philosopher $p$ is $thinking$, $hungry$, or $eating$, each of $p$'s neighbors knows that $p$ is one of its neighbors)
+
+\indent
+
+{\it p.gone} $\rightarrow \langle \forall q  \rhd \not\in q.neighbors \rangle$
+(when a philosopher $p$ is $gone$, it is not in any other philosopher?s set of neighbors)
+
+\indent
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\section{Appendix: Relevant Code}
 
 \begin{lstlisting}
 infinite_loop(Ref, Nodel, Neighbors) ->
@@ -188,70 +263,6 @@ philosophize(Ref, leaving, Node, ForksNeighborsList)->
         %need to gather forks and then leave with them
         {controller, Node} ! {Ref, gone}.
 \end{lstlisting}
-\underline{\large{Progress.}}
-
-$p.joining$ $\leadsto$ $p.thinking$
-
-\indent After philosopher $p$ has started up, it has given itself the $joining$ state. Assuming that the neighbors in which $p$ knows about are running correctly and the network runs as expected, all other philosophers are bound to hear $p$'s request to join eventually and thus $p$ is guaranteed to be given the state $thinking$.
-
-$p.hungry$ $\leadsto$ $p.eating$
-
-\indent When $hungry$, a philosopher $p$ must be passed the forks once all neighbor philosophers are not eating
-
-$p.leaving$ $\leadsto$ $p.gone$
-
-\indent
-
-
-\underline{\large{Safety.}}
-
-In order to show that the algorithm satisfies the Safety requirement, we must show that the relevant stages satisfy the Safety properties:
-
-{\bfseries initially} {\it p.joining}
-
-\indent $p$ is given the state of $joining$ in which the philosopher $p$ is requesting to join the group and cannot possibly gain any other state until granted acceptance.
-
-{\it p.joining} {\bfseries next} {\it (p.joining $\vee$ p.thinking)}
-
-\indent This requirement is satisfied because $p$ can be constantly trying to join the party but may be waiting infinitely or he/she can be granted the state of thinking (which is the only initial state in the party).
-
-{\it p.thinking} {\bfseries next} {\it (p.thinking $\vee$ p.hungry $\vee$ p.leaving)}
-
-\indent When thinking, the philosopher $p$ can continue thinking, the external controller can issue the order to become hungry, or the controller may tell the philosopher to leave. No other "state" transitions are available to the philosopher at the $thinking$ state. 
-
-{\it p.hungry} {\bfseries next} {\it (p.hungry $\vee$ p.eating $\vee$ p.leaving)}
-
-\indent If a philosopher $p$ is told by the external controller to become hungry, then it may be told to leave, it may become eating due to its hungry nature, or $p$ may remain hungry (which would likely imply a failure in the system).
-
-{\it p.eating} {\bfseries next} {\it (p.eating $\vee$ p.thinking $\vee$ p.leaving)}
-
-\indent
-
-{\it p.leaving} {\bfseries next} {\it (p.leaving $\vee$ p.gone)}
-
-\indent
-
-{\it p.gone} {\bfseries next} {\it (p.gone)}
-
-\indent
-
-{\it p.eating} $\rightarrow \langle \forall q | q \in p.neighbors \rhd \not q.eating \rangle$
-(when a philosopher $p$ is $eating$, none of its neighbors is $eating$)
-
-\indent 
-
-{\it (p.thinking $\vee$ p.hungry $\vee$ p.eating)} $\langle \rightarrow \forall q | q \in p.neighbors \rhd p \in q.neighbors \rangle$
-(when a philosopher $p$ is $thinking$, $hungry$, or $eating$, each of $p$'s neighbors knows that $p$ is one of its neighbors)
-
-\indent
-
-{\it p.gone} $\rightarrow \langle \forall q  \rhd \not\in q.neighbors \rangle$
-(when a philosopher $p$ is $gone$, it is not in any other philosopher?s set of neighbors)
-
-\indent
-
-\end{solution}
-%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 \end{document}
