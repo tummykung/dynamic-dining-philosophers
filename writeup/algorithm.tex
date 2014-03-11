@@ -93,6 +93,25 @@ Our solution is based on a hiegenic solution discussed in class. To avoid deadlo
 
 
 \section{Algorithms}
+\pic{0.6}{diagram}
+
+\subsection{Transitions}
+We will describe what would happen for a philosopher receives a for each state.
+\begin{description}
+\item[(1) $p.joining$ $\to$ $p.thinking$:] After philosopher $p$ has started up, it has given itself the $joining$ state. Assuming that the neighbors in which $p$ knows about are running correctly and the network runs as expected, all other philosophers are bound to hear $p$'s request to join eventually and thus $p$ is guaranteed to be given the state $thinking$.
+
+\item[(2) $p.thinking$ $\to$ $p.hungry$:]
+
+\item[(3) $p.hungry$ $\to$ $p.eating$:] When $hungry$, a philosopher $p$ must be passed the forks once all neighbor philosophers are not eating
+
+\item[(4) $p.hungry$ $\to$ $p.eating$:]
+
+\item[(5) $p.thinking \vee p.hungry \vee p.eating)$ $\to$ $p.leaving$:]
+
+\item[(6) $p.leaving$ $\to$ $p.gone$:]
+\end{description}
+\subsection{When Receive Request}
+\subsection{When Receive Fork}
 
 \section{Proof of Correctness}
 
