@@ -13,8 +13,6 @@
 %% ====================================================================
 %%                             Constants
 %% ====================================================================
--define(TIMEOUT, 10000).
-
 
 %% ====================================================================
 %%                            Main Function
@@ -24,7 +22,7 @@ main(Params) ->
     % try 
         % The first parameter is destination node name
         %  It is a lowercase ASCII string with no periods or @ signs in it.
-        NodeName = list_to_atom(hd(Params)),
+        NodeName = hd(Params),
 
         % 0 or more additional parameters, each of which is the Erlang node
         % name of a neighbor of the philosopher.
@@ -36,7 +34,7 @@ main(Params) ->
         % format microseconds of timestamp to get an 
         % effectively-unique node name
         {_, _, Micro} = os:timestamp(),
-        net_kernel:start([list_to_atom(NodeNames), shortnames]),
+        net_kernel:start([list_to_atom(NodeName), shortnames]),
 
         register(philosopher, self()),
 
@@ -56,161 +54,158 @@ main(Params) ->
     % end,
     halt().
 
+% Check to see if a process has all the forks
+% it needs to eat
+haveAllForks([],_) -> io:format("DONE~n"),
+                      true;
+haveAllForks(Neighbors, ForksList) ->
+        case (dict:find(hd(Neighbors), ForksList)) of
+            %Request the fork
+            {ok, [[0,_]]} -> io:format("Don't have all forks~n"),
+                          false;
+            {ok, [[1,_]]} -> io:format("Already Have Fork~n"),
+                          haveAllForks(tl(Neighbors), ForksList)
+        end.
+
 %requests each neighbor to join the network, one at a time,
 %when joining there shouldn't be any other requests for forks or leaving going on
 %If another process requests to join during the joining phase, hold onto it until
 %successfully joined and return it
-requestJoin([])-> ok;
-requestJoin(Neighbors)->
-    try
+requestJoin([], ForksList)-> ForksList;
+requestJoin(Neighbors, ForksList)->
         io:format("Process ~p at node ~p sending request to ~n~s", 
             [self(), node(), hd(Neighbors)]),
         io:format("After~n"),
-        {list_to_atom(hd(Neighbors)), Node} ! {node(), requestJoin},
+        {philosopher, list_to_atom(hd(Neighbors))} ! {node(), requestJoin},
         receive
             {Node, ok} -> 
-                io:format("Got reply (from ~p): ok!", 
-                          [Pid]),
-                %{philosopher, Node} ! {ok},
-                        requestJoin(Node, tl(Neighbors), Joiner);
-        end,
-    catch
-        _:_ -> io:format("Error getting joining permission.~n")
-    end.
+                io:format("Got reply (from ~p): ok!", [Node]),
+                dict:append(Node, [0, "SPAGHETTI SAUCE"], ForksList),
+                requestJoin(tl(Neighbors), ForksList)
+        end.
 
 %% im pretty sure that the message passing should be the other way around since 
 %%we are only writing the philosophers' code and not the external controller's. 
 %%Was the infinite_loop intended to be a test controller? Also, should we keep using NewRef or just use NewRef for eating?
-requestForks([],ForksList) -> ForksList;
+requestForks([],_) -> io:format("No more neighbors ~n");
 requestForks(Neighbors, ForksList)->
-    try
         io:format("Checking for neighbor ~n"),
         %See if we have the fork from this edge
         case (dict:find(hd(Neighbors), ForksList)) of
             %Request the fork
-            {ok, [0,_]} -> {philosopher, list_to_atom(hd(Neighbors))} ! {node(), requestFork},
-            {ok, [1,_]} -> io:format("Already Have Fork"),
+            {ok, [[0,_]]} -> io:format("Requesting fork~n"),
+                          {philosopher, list_to_atom(hd(Neighbors))} ! {node(), requestFork};
+            {ok, [[1,_]]} -> io:format("Already Have Fork~n")
         end,
-        requestJoin(Ref, Node, tl(Neighbors), ForksList); 
-    catch
-        _:_ -> io:format("Error getting joining permission.~n")
-    end.
-
-createForks([],ForkList,_) -> ForkList;
-createForks(JoinRequests,ForkList,Ref) ->
-    %create the fork and hold it
-    dict:append(list_to_atom(hd(JoinRequests)), [1, "DIRTY"], ForkList),
-    %tell the process that it has joined the network successfully
-    {list_to_atom(hd(JoinRequests)), Ref} ! {self(), Ref, ok},
-    createForks(tl(JoinRequests),ForkList, Ref).
+        requestForks(tl(Neighbors), ForksList).
 
 philosophize(joining, Node, Neighbors, ForkList)->
-	io:format("joining~n"),
-	%philosophize(Ref, thinking, Node, Neighbors);
-    requestJoin(Ref, Node, Neighbors, []),
-    io:fomat("Requested to join everybody~n"),
-    %create forks for people who requested join earlier
-    NewForkList = createForks(JoinRequests, ForkList, Ref),
+  io:format("joining~n"),
+  %philosophize(Ref, thinking, Node, Neighbors);
+    ForksList = requestJoin(Neighbors, ForkList),
+    io:format("Requested to join everybody~n"),
     %now we start thinking
-    philosophize(Ref, thinking, Node, Neighbors, NewForkList);
+    philosophize(thinking, Node, Neighbors, ForksList);
 
 
 %When thinking, we can be told to leave, to become hungry,
 %or get request for a fork
 philosophize(thinking, Node, Neighbors, ForksList)->
-	io:format("Thinking~n"),
+  io:format("Thinking~n"),
     receive
-	   {Pid, NewRef, leave} ->
+     {Pid, NewRef, leave} ->
            io:format("leaving"),
-           philosophize(NewRef, leaving, Node, Neighbors, ForksList);
-	   {Pid, NewRef, become_hungry} ->
+           philosophize(leaving, Node, Neighbors, ForksList),
+           Pid ! {NewRef, gone};
+     {Pid, NewRef, become_hungry} ->
            io:format("becoming hungry"),
-           philosophize(NewRef, hungry, Node, Neighbors, ForksList);
-       {Pid, NewRef, requestJoin} ->
-           io:format("~p Requested to Join, accepting",[Pid]),
-           dict:append(list_to_atom(Pid), [1, "DIRTY"], ForkList),
-           philosophize(Ref, thinking, Node, Neighbors, ForksList);
+           %Send fork requests to everyone
+           requestForks(Neighbors, ForksList),
+           io:format("Send requests for forks~n"),
+           case (haveAllForks(Neighbors, ForksList)) of
+              true -> Pid ! {NewRef, eating},
+                    io:format("Have all forks!~n"),
+                    philosophize(eating, Node, Neighbors, ForksList, []);
+              false -> io:format("Don't have all forks :(~n"),
+                    philosophize(hungry, Node, Neighbors, ForksList, [], Pid, NewRef)
+           end;
+    {NewNode, requestJoin} ->
+           io:format("~p requested to Join, accepting~n",[NewNode]),
+           NewNeighbors = lists:append(Neighbors, [NewNode]),
+           ForkList = dict:append(NewNode, [1, "DIRTY"], ForksList),
+           {philosopher, NewNode} ! {Node, ok},
+           philosophize(thinking, Node, NewNeighbors, ForkList);
            %%%
-       {Pid, NewRef, requestFork} ->
+       {NewNode, requestFork} ->
            io:format("sending fork"),
            %delete the fork from the list send message
-           dict:erase(list_to_atom(Pid), ForksList),
-           dict:append(list_to_atom(Pid), [0, "DIRTY"], ForksList),
+           ForkList = dict:erase(NewNode, ForksList),
+           NewForkList = dict:append(NewNode, [0, "DIRTY"], ForkList),
+           {philosopher, NewNode} ! {Node, fork},
+           philosophize(thinking, Node, Neighbors, NewForkList)
+  end.
 
-           {Pid, NewRef} ! {self(), Ref, fork}
-	end,
-    philosophize(Ref, thinking, Node, Neighbors, ForksList).
-
-philosophize(Ref, hungry, Node, Neighbors, ForksList)->
-    NewForksList = requestForks(Ref, Node, Neighbors, ForksList),
+philosophize(eating, Node, Neighbors, ForksList, Requests)->
+    io:format("eating!~n"),
     receive
-    %Get the fork from the other process
-        {Node, fork} -> 
-            dict:erase(Node, ForksList),
-            dict:append(Node, [1, "CLEAN"], ForksList),
-            requestForks(Node, tl(Neighbors), ForksList);
-        {Node, requestJoin} ->
+       {Pid, NewRef, leave} ->
+           io:format("leaving"),
+           philosophize(leaving, Node, Neighbors, ForksList);
+       {Pid, NewRef, stop_eating} ->
+           io:format("stopped_eating"),
+           %send the forks to the processes that wanted them
+           {Pid, NewRef} ! {self(), Node, fork};
+       {NewNode, requestJoin} ->
+            io:format("~p requested to join~n",[NewNode]),
             %if we get a join request, just create the fork and give acknowledgement
-            dict:erase(Node, ForksList),
-            dict:append(Node, [1, "DIRTY"], ForksList),
-            {philosopher, Node} ! {node(), ok};
-            % if someone requests a fork
-            end,
-        requestJoin(Ref, Node, tl(Neighbors), ForksList);
-    philosophize(Ref, eating, Node, Neighbors, ForksList);
-
-philosophize(Ref, eating, Node, Neighbors, ForksList)->
-    receive
-       {pid, NewRef, leave} ->
-           io:format("leaving"),
-           philosophize(NewRef, leaving, Node, Neighbors, ForksList);
-       {pid, NewRef, stop_eating} ->
-           io:format("sending fork"),
-           %delete the fork from the list send message
-           dict:erase(pid, ForksList),
-           dict:append(pid, [0, "DIRTY"], ForksList),
-           {pid, NewRef} ! {self(), Ref, fork};
-    {pid, NewRef, leave} ->
-           io:format("leaving"),
-           philosophize(NewRef, leaving, Node, Neighbors, ForksList)
+            NewRequests = lists:append(Neighbors, [NewNode]),
+            ForkList = dict:append(NewNode, [1, "DIRTY"], ForksList),
+            {philosopher, NewNode} ! {Node, ok},
+            philosophize(eating, Node, Neighbors, ForkList, NewRequests)
     end.
 
-	% want to receive all forks and then start eating
-	%{controller, Node} ! {NewRef, eating},
-	%print("eating"),
-	%philosophize(Ref, eating, Node, Neighbors)
-	%end;
-%philosophize(Ref, eating, Node, Neighbors, ForksList)->
-%	receive
-%	   {self(), NewRef, stop_eating} ->
-%		% handle forks and hygenity if doing that
-%		print("stopping eating"),
-%		philosophize(NewRef, thinking, Node, Neighbors);
-%	   {self(), NewRef, leave} ->
-%		print("stopping eating and leaving"),
-%		%get rid of forks
-%		philosophize(NewRef, leaving, Node, Neighbors)
-%  	after ?TIMEOUT -> print("Timed out waiting for reply!")
-%	end; 
-%philosophize(Ref, leaving, Node, Neighbors, ForksList)->
-%	{controller, Node} ! {Ref, gone}.
 
-%infinite_loop(Ref, Nodel, Neighbors) ->
-%    {spelling, Node} ! {self(), Ref, become_hungry},
-    % {spelling, Node} ! {self(), Ref, stop_eating},
-    % {spelling, Node} ! {self(), Ref, leave},
-%    receive
-%        {Ref, eating} ->
-%        print("~p is eating.~n", [Ref]);
-%        {Ref, gone} ->
-%        print("~p is gone.~n", [Ref]);
-%        Reply ->
-%        print("Got unexpected message: ~p~n", [Reply])
-%        after ?TIMEOUT -> print("Timed out waiting for reply!")
-%    end,
-%    infinite_loop(Ref, Nodel, Neighbors)
-%end.
 
+philosophize(hungry, Node, Neighbors, ForksList, RequestList, Pid, Ref)->   
+    io:format("Hungry, waiting for forks~n"),
+    receive
+    %Get the fork from the other process
+        {NewPid, NewRef, leave} ->
+           io:format("leaving"),
+           philosophize(leaving, Node, Neighbors, ForksList, NewPid, NewRef);
+        {NewNode, fork} -> 
+            io:format("Got fork from ~p~n",[NewNode]),
+            dict:erase(NewNode, ForksList),
+            dict:append(NewNode, [1, "CLEAN"], ForksList),
+            case (haveAllForks(Neighbors, ForksList)) of
+              true -> Pid ! {Ref, eating},
+                    philosophize(eating, Node, Neighbors, ForksList);
+              false -> philosophize(hungry, Node, Neighbors, ForksList)
+            end;
+        {NewNode, requestJoin} ->
+            io:format("~p requested to join~n",[NewNode]),
+            %if we get a join request, just create the fork and give acknowledgement
+            dict:append(NewNode, [1, "DIRTY"], ForksList),
+            {philosopher, NewNode} ! {node(), ok};
+            % if someone requests a fork
+        {NewNode, requestFork} -> 
+            io:format("~p requested the fork~n",[NewNode]),
+            case (dict:find(NewNode, ForksList)) of
+            %Request the fork
+            {ok, [1, "CLEAN"]} -> io:format("My fork!, but I'll remember you wanted it somehow~n"),
+                                lists:append(RequestList, [NewNode]);
+            {ok, [1, "DIRTY"]} -> io:format("~p Fine, I give it up~n",[NewNode]),
+                          dict:erase(NewNode, ForksList),
+                          dict:append(NewNode, [0, "CLEAN"], ForksList),
+                          {philosopher, NewNode} ! {Node, requestFork}
+            end
+      end,
+    philosophize(hungry, Node, Neighbors, ForksList, RequestList, Pid, Ref).
+
+philosophize(leaving, Node, [], ForksList, Pid, Ref) -> Pid ! {Ref, gone};
+philosophize(leaving, Node, Neighbors, ForksList, Pid, Ref) -> 
+    {philosopher, list_to_atom(hd(Neighbors))} ! {node(), leaving},
+    philosophize(leaving, Node, tl(Neighbors), ForksList, Pid, Ref).
 %% ====================================================================
 %%                        Utility Functions
 %% ====================================================================
