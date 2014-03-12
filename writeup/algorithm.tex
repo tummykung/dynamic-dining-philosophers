@@ -66,7 +66,7 @@ escapeinside={\%*}{*)} % if you want to add a comment within your code
 
 \lhead{Tum C., Patrick L., Cory P.
 }
-\chead{\bf{Math 182E}}
+\chead{\bf{CS182E} Distributed Systems}
 \rhead{March 13, 2014}
 
 \begin{center} \Large Algorithms: The Dynamic Dining Philosophers \end{center}
@@ -81,11 +81,19 @@ We need to develop and implement a protocol that allows nodes to join or leave a
 
 \section{Allowed Assumptions}
 
-\begin{description}
-\item[External controllers (a1)]
-If a philosopher $p$ informs an external controller that it is \emph{eating}, the external controller will direct $p$ to become either \emph{thinking} or \emph{leaving} within a bounded time.
-External controllers will not send duplicate or invalid control signals.
-\end{description}
+\subsection{External Controllers}
+\begin{enumerate}[E1]
+\item If a philosopher $p$ informs an external controller that it is \emph{eating}, the external controller will direct $p$ to become either \emph{thinking} or \emph{leaving} within a bounded time.
+
+\item External controllers will not send duplicate or invalid control signals.
+
+\item \label{Assump:E_guarantees_nodes_entering_network} If a process $p_1$ receives a joining request from another process $p_2$, external controllers will not send signals to ask $p_1$ to leave until $p_2$ successfully joins the network.
+\end{enumerate}
+
+\subsection{Others}
+\begin{enumerate}
+\item Messages are never lost; sufficient time is allowed for a philosopher to bootstrap itself before other philosophers send it messages.
+\end{enumerate}
 
 \section{Solution}
 \subsection{Overview}
@@ -93,45 +101,49 @@ Our solution is based on a hiegenic solution discussed in class. To avoid deadlo
 
 
 \section{Algorithms}
-\pic{0.6}{diagram}
 
-\subsection{Transitions}
-We will describe what would happen for a philosopher receives a for each state.
+\subsection{Initial Distributions of Forks}
+\begin{enumerate}
+\item All forks are dirty.
+\item Initially, all forks are distributed to philosophers in an arbitrary way such that the corresponding graph is acyclic. We choose to use ids to decide which process has a fork initially; the process with a higher process id has a fork.
+\end{enumerate}
+
+\subsection{Actions before Transitions}
+\pic{0.6}{diagram}
+We will describe what would happen when a philosopher receives a fork.
 \begin{description}
 \item[(1) $p.joining$ $\to$ $p.thinking$:] After philosopher $p$ has started up, it has given itself the $joining$ state. Assuming that the neighbors in which $p$ knows about are running correctly and the network runs as expected, all other philosophers are bound to hear $p$'s request to join eventually and thus $p$ is guaranteed to be given the state $thinking$.
 
 \item[(2) $p.thinking$ $\to$ $p.hungry$:]
+The philosopher checks to see if it holds all forks. If so, performs the transition. If not, sends requests to all forks it does not have.
 
-\item[(3) $p.hungry$ $\to$ $p.eating$:] When $hungry$, a philosopher $p$ must be passed the forks once all neighbor philosophers are not eating
+\item[(3) $p.hungry$ $\to$ $p.eating$:] 
+When transitioning from $p.hungry$ to $p.eating$, the philosopher makes all forks dirty, thereby making its priority lowest among all its neighbors.
 
-\item[(4) $p.hungry$ $\to$ $p.eating$:]
+% When $hungry$, a philosopher $p$ must be passed the forks once all neighbor philosophers are not eating
 
-\item[(5) $p.thinking \vee p.hungry \vee p.eating)$ $\to$ $p.leaving$:]
+\item[(4) $p.eating$ $\to$ $p.thinking$:]
+The phisolopher sends any forks for which it received requests while eating.
+
+\item[(5) $(p.thinking \vee p.hungry \vee p.eating)$ $\to$ $p.leaving$:]
+The philosopher can immediately go to $leaving$ state.
 
 \item[(6) $p.leaving$ $\to$ $p.gone$:]
 \end{description}
-\subsection{When Receive Request}
-\subsection{When Receive Fork}
+\subsection{Incoming Request Messages}
+When a fork message is received, the philosopher marks the fork as clean.
+
+\begin{description}
+\item[During $p.hungry$] if the philosopher now holds all its forks, it transitions to $eating$ state.
+\end{description}
+\subsection{Incoming Fork Messages}
 
 \section{Proof of Correctness}
 
-\section{Proof of Progress}
-\underline{\large{Progress.}}
-
-$p.joining$ $\leadsto$ $p.thinking$
-
-\indent After philosopher $p$ has started up, it has given itself the $joining$ state. Assuming that the neighbors in which $p$ knows about are running correctly and the network runs as expected, all other philosophers are bound to hear $p$'s request to join eventually and thus $p$ is guaranteed to be given the state $thinking$.
-
-$p.hungry$ $\leadsto$ $p.eating$
-
-\indent When $hungry$, a philosopher $p$ must be passed the forks once all neighbor philosophers are not eating
-
-$p.leaving$ $\leadsto$ $p.gone$
-
-\indent
 
 
-\underline{\large{Safety.}}
+
+\subsection{Proof of Safety Properties}
 
 In order to show that the algorithm satisfies the Safety requirement, we must show that the relevant stages satisfy the Safety properties:
 
@@ -163,12 +175,12 @@ In order to show that the algorithm satisfies the Safety requirement, we must sh
 
 \indent
 
-{\it p.eating} $\rightarrow \langle \forall q | q \in p.neighbors \rhd \not q.eating \rangle$
+{\it p.eating} $\rightarrow \langle \forall q | q \in p.neighbors \rhd \neg q.eating \rangle$
 (when a philosopher $p$ is $eating$, none of its neighbors is $eating$)
 
 \indent 
 
-{\it (p.thinking $\vee$ p.hungry $\vee$ p.eating)} $\langle \rightarrow \forall q | q \in p.neighbors \rhd p \in q.neighbors \rangle$
+{\it (p.thinking $\vee$ p.hungry $\vee$ p.eating)} $\Rightarrow \langle \forall q | q \in p.neighbors \rhd p \in q.neighbors \rangle$
 (when a philosopher $p$ is $thinking$, $hungry$, or $eating$, each of $p$'s neighbors knows that $p$ is one of its neighbors)
 
 \indent
@@ -184,7 +196,7 @@ In order to show that the algorithm satisfies the Safety requirement, we must sh
 
 \begin{lstlisting}
 infinite_loop(Ref, Nodel, Neighbors) ->
-    spelling, Node} ! {self(), Ref, become_hungry},
+    philosophize, Node} ! {self(), Ref, become_hungry},
     % {spelling, Node} ! {self(), Ref, stop_eating},
     % {spelling, Node} ! {self(), Ref, leave},
     receive
