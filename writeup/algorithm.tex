@@ -1,5 +1,5 @@
 \documentclass[11pt]{article}
-\usepackage{amsmath, amssymb, enumerate, mathpazo, mathrsfs, fancyhdr, mathrsfs, graphicx, framed}
+\usepackage{amsmath, amssymb, enumerate, mathpazo, mathrsfs, fancyhdr, mathrsfs, graphicx, framed, float}
 \usepackage[tmargin = 1in, lmargin = 1.1in, rmargin = 1in, bmargin = 1in]{geometry}
 %%%%%%%%%%%%%%%%%%%%%%% IMPORTANT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                             %
@@ -66,41 +66,69 @@ escapeinside={\%*}{*)} % if you want to add a comment within your code
 
 \lhead{Tum C., Patrick L., Cory P.
 }
-\chead{\bf{CS182E} Distributed Systems}
+\chead{\bf{CSCI 182E} Distributed Systems}
 \rhead{March 13, 2014}
 
-\begin{center} \Large Algorithms: The Dynamic Dining Philosophers \end{center}
+\vspace*{0.1in}
+\begin{center} \Large The Algorithm for the Dynamic Dining Philosophers Problem \end{center}
 
-\section{Introduction}
-
-
-\subsection{Problem Statement}
+\section{The Dynamic Dining Philosophers}
+\begin{problem}{Statement}
 We need to develop and implement a protocol that allows nodes to join or leave a running dining philosophers network at runtime in an orderly fashion while maintaining an acyclic priority graph, ensuring safety, and preventing deadlock.
+\end{problem}
 
-
-
-\section{Allowed Assumptions}
-
-\subsection{External Controllers}
-\begin{enumerate}[E1]
-\item If a philosopher $p$ informs an external controller that it is \emph{eating}, the external controller will direct $p$ to become either \emph{thinking} or \emph{leaving} within a bounded time.
-
-\item External controllers will not send duplicate or invalid control signals.
-
-\item \label{Assump:E_guarantees_nodes_entering_network} If a process $p_1$ receives a joining request from another process $p_2$, external controllers will not send signals to ask $p_1$ to leave until $p_2$ successfully joins the network.
-\end{enumerate}
-
-\subsection{Others}
-\begin{enumerate}
-\item Messages are never lost; sufficient time is allowed for a philosopher to bootstrap itself before other philosophers send it messages.
-\end{enumerate}
-
-\section{Solution}
-\subsection{Overview}
 Our solution is based on a hiegenic solution discussed in class. To avoid deadlocks, we maintain a priority graphs, in which the person with a higher priority gets to eat first when two of adjacent philosophers are hungry. We use a fork mechanism to represent the priority graph in a distributed fashion. There is exactly one fork per each edge between two nodes, where nodes represent philosophers. Each fork can be either \texttt{dirty} or \texttt{clean}. A clean fork implies that the person holding it has a higher priority than the person at the other end of an edge. Conversely, a dirty fork implies that the person holding it has a lower priority. In this assignment, we extend this algorithm to allow philosphers to join and leave the table, while still maintain the acyclic priority graph, ensuring safey, and preventing deadlock.
 
 
-\section{Algorithms}
+\section{The Algorithm}
+\subsection{A set of states}
+There are 6 states:
+\begin{enumerate}
+\item \textit{joining}
+\item \textit{thinking}
+\item \textit{hungry}
+\item \textit{eating}
+\item \textit{leaving}
+\item \textit{gone}
+\end{enumerate}
+
+
+\subsection{Information Stored by Each Process}
+In the Erlang syntax, the $\texttt{philosophize}$ function's header represents
+the information stored by each process:
+\begin{lstlisting}
+philosophize(<state>, Node, Neighbors, ForksList)
+\end{lstlisting}
+In other words, a process $p$ contains the following information:
+\begin{enumerate}
+\item $p.state$ ($\langle\texttt{state}\rangle$): one of the six states outlined above.
+\item $p.id$ its process id ($\texttt{Node}$).
+\item $p.neighbors$ ($\texttt{Neighbors}$): a list of its neighboring processes $[n_1, n_2, \ldots, n_k]$.
+\item $p.fork\_states$ ($\texttt{ForkList}$): a list $[f_{p, n_1}, f_{p, n_2}, f_{p, n_3}, \ldots, f_{p, n_k}]$ of fork states for each its neighbors, in the same order as the neighboring list. The fork state can be either 0 or 1, where 1 means the fork belongs to $p$, where as 0 means the fork belongs to its corresponding neigbor. For example, if $p.neighbors = [n_1, n_2, n_3]$ and $p.fork\_states = [0, 1, 0],$ then the fork $f_{p, n_1}$ belongs to $p$; $f_{p, n_2}$ belongs to $n_2$;
+and $f_{p, n_3}$ belongs to $n_3$.
+\end{enumerate}
+
+\subsection{Message Types in the System}
+We categorize messages by its sender and its receiver:
+\subsubsection{From Philosophers to Philosophers}
+\begin{enumerate}
+\item a fork $f_{i,j}$: exactly one fork per one pair of neighboring processes $i$ and $j$. A fork can be dirty (represented by 0) or clean (represented by 1).
+\item a fork request. The sender philosopher should only send this when it is in the $hungry$ state and it does not hold a fork.
+\item a joining request. The sender philosopher, who should be in the joining state, once assigned by the external controller who to join, sends a joining request to each of its intended neighbors.
+\end{enumerate}
+
+\subsubsection{From External Controllers to Philosophers}
+\begin{enumerate}
+\item a \texttt{become\_hungry} message. The philosopher should only receive this message while \textit{thinking}; when it does, it transitions to \textit{hungry}.
+\item a \texttt{stop\_eating} message. The philosopher should only receive this message while \textit{eating}; when it does, it transitions to \textit{thinking}.
+\item a \texttt{leave} message. The philosopher can receive this message in any state other than \textit{joining}; when it does, it should [TODO:Fill in the description of the protocol], then immediately leave the network.
+\end{enumerate}
+
+\subsubsection{From Philosophers to External Controllers}
+\begin{enumerate}
+\item an \texttt{eating} message. The philosopher should send this message, when it becomes \textit{eating}, to the controller that trigger its transition to \textit{hungry} (through the \texttt{become\_hungry} message).
+\item a \textit{gone} message. When it become \textit{gone}, the philosopher should send this message to the controller that sent it the \texttt{leave} message that triggerred its departure.
+\end{enumerate}
 
 \subsection{Initial Distributions of Forks}
 \begin{enumerate}
@@ -109,7 +137,12 @@ Our solution is based on a hiegenic solution discussed in class. To avoid deadlo
 \end{enumerate}
 
 \subsection{Actions before Transitions}
+\begin{figure}[H]
 \pic{0.6}{diagram}
+\label{fig:diagram}
+\caption{A diagram showing possible state transitions.}
+\end{figure}
+
 We will describe what would happen when a philosopher receives a fork.
 \begin{description}
 \item[(1) $p.joining$ $\to$ $p.thinking$:] After philosopher $p$ has started up, it has given itself the $joining$ state. Assuming that the neighbors in which $p$ knows about are running correctly and the network runs as expected, all other philosophers are bound to hear $p$'s request to join eventually and thus $p$ is guaranteed to be given the state $thinking$.
@@ -126,7 +159,7 @@ When transitioning from $p.hungry$ to $p.eating$, the philosopher makes all fork
 The phisolopher sends any forks for which it received requests while eating.
 
 \item[(5) $(p.thinking \vee p.hungry \vee p.eating)$ $\to$ $p.leaving$:]
-The philosopher can immediately go to $leaving$ state.
+The philosopher can immediately go to the $leaving$ state.
 
 \item[(6) $p.leaving$ $\to$ $p.gone$:]
 \end{description}
@@ -138,58 +171,96 @@ When a fork message is received, the philosopher marks the fork as clean.
 \end{description}
 \subsection{Incoming Fork Messages}
 
+
+
+\section{Allowed Assumptions}
+
+\subsection{External Controllers}
+\begin{enumerate}[E1]
+\item If a philosopher $p$ informs an external controller that it is \emph{eating}, the external controller will direct $p$ to become either \emph{thinking} or \emph{leaving} within a bounded time.
+
+\item External controllers will not send duplicate or invalid control signals.
+
+\item \label{Assump:E_guarantees_nodes_entering_network} If a process $p_1$ receives a joining request from another process $p_2$, external controllers will not send signals to ask $p_1$ to leave until $p_2$ successfully joins the network.
+\end{enumerate}
+
+\subsection{Misc.}
+\begin{enumerate}[E4]
+\item Messages are never lost; sufficient time is allowed for a philosopher to bootstrap itself before other philosophers send it messages.
+\end{enumerate}
+
+
 \section{Proof of Correctness}
 
 
-
+\subsection{Proof of Acyclic Priority Graph Invariance}
+The prioirity graph changes only in three possible cases.
+\begin{description}
+\item[Case 1: A new process joins the network.] In this case, the new process has the lowest priority. Thus, all its neighbors will have arrow point to it. Thus, if there were a cycle, such cycle could not possibly pass this new process. Since the original graph was acyclic, there could not be cycles elsewhere as well. Thus, the resulting priority graph is still acyclic.
+\item[Case 2: A process leaves the network.] A new priority graph is a subgraph of the original graph, and so the new graph cannot have cycles. If it were to have any cycles, these cycles would have presented in the original graph as well, which is not the case. Thus, the resulting priority network is acyclic.
+\item[Case 3: A process eats.] In this case, based on our hiegenic algorithm, such process will then have the lowest priority among all its neighbors. Thus, all the arrow points to it. If there were a cycle, such cycle could not possibly pass this process. Since the original graph was acyclic, there could not be cycles elsewhere as well. Thus, the resulting priority graph is still acyclic.
+\end{description}
 
 \subsection{Proof of Safety Properties}
 
-In order to show that the algorithm satisfies the Safety requirement, we must show that the relevant stages satisfy the Safety properties:
+\begin{enumerate}[S1]
+\item {\bfseries initially} {\it p.joining}
 
-{\bfseries initially} {\it p.joining}
+$p$ is given the state of $joining$ in which the philosopher $p$ is requesting to join the group and cannot possibly gain any other state until granted acceptance.
 
-\indent $p$ is given the state of $joining$ in which the philosopher $p$ is requesting to join the group and cannot possibly gain any other state until granted acceptance.
+\item {\it p.joining} {\bfseries next} {\it (p.joining $\vee$ p.thinking)}
 
-{\it p.joining} {\bfseries next} {\it (p.joining $\vee$ p.thinking)}
+This requirement is satisfied because $p$ can be constantly trying to join the party but may be waiting infinitely or he/she can be granted the state of thinking (which is the only initial state in the party).
 
-\indent This requirement is satisfied because $p$ can be constantly trying to join the party but may be waiting infinitely or he/she can be granted the state of thinking (which is the only initial state in the party).
+\item {\it p.thinking} {\bfseries next} {\it (p.thinking $\vee$ p.hungry $\vee$ p.leaving)}
 
-{\it p.thinking} {\bfseries next} {\it (p.thinking $\vee$ p.hungry $\vee$ p.leaving)}
+When thinking, the philosopher $p$ can continue thinking, the external controller can issue the order to become hungry, or the controller may tell the philosopher to leave. No other "state" transitions are available to the philosopher at the $thinking$ state. 
 
-\indent When thinking, the philosopher $p$ can continue thinking, the external controller can issue the order to become hungry, or the controller may tell the philosopher to leave. No other "state" transitions are available to the philosopher at the $thinking$ state. 
+\item {\it p.hungry} {\bfseries next} {\it (p.hungry $\vee$ p.eating $\vee$ p.leaving)}
 
-{\it p.hungry} {\bfseries next} {\it (p.hungry $\vee$ p.eating $\vee$ p.leaving)}
+If a philosopher $p$ is told by the external controller to become hungry, then it may be told to leave, it may become eating due to its hungry nature, or $p$ may remain hungry (which would likely imply a failure in the system).
 
-\indent If a philosopher $p$ is told by the external controller to become hungry, then it may be told to leave, it may become eating due to its hungry nature, or $p$ may remain hungry (which would likely imply a failure in the system).
+\item {\it p.eating} {\bfseries next} {\it (p.eating $\vee$ p.thinking $\vee$ p.leaving)}
 
-{\it p.eating} {\bfseries next} {\it (p.eating $\vee$ p.thinking $\vee$ p.leaving)}
 
-\indent
+\item {\it p.leaving} {\bfseries next} {\it (p.leaving $\vee$ p.gone)}
 
-{\it p.leaving} {\bfseries next} {\it (p.leaving $\vee$ p.gone)}
 
-\indent
 
-{\it p.gone} {\bfseries next} {\it (p.gone)}
+\item {\it p.gone} {\bfseries next} {\it (p.gone)}
 
-\indent
 
-{\it p.eating} $\rightarrow \langle \forall q | q \in p.neighbors \rhd \neg q.eating \rangle$
+
+\item {\it p.eating} $\Rightarrow \langle \forall q | q \in p.neighbors \rhd \neg q.eating \rangle$
 (when a philosopher $p$ is $eating$, none of its neighbors is $eating$)
 
-\indent 
 
-{\it (p.thinking $\vee$ p.hungry $\vee$ p.eating)} $\Rightarrow \langle \forall q | q \in p.neighbors \rhd p \in q.neighbors \rangle$
+
+\item {\it (p.thinking $\vee$ p.hungry $\vee$ p.eating)} $\Rightarrow \langle \forall q | q \in p.neighbors \rhd p \in q.neighbors \rangle$
 (when a philosopher $p$ is $thinking$, $hungry$, or $eating$, each of $p$'s neighbors knows that $p$ is one of its neighbors)
 
-\indent
 
-{\it p.gone} $\rightarrow \langle \forall q  \rhd \not\in q.neighbors \rangle$
+\item {\it p.gone} $\Rightarrow \langle \forall q  \rhd \not\in q.neighbors \rangle$
 (when a philosopher $p$ is $gone$, it is not in any other philosopher?s set of neighbors)
 
-\indent
+\end{enumerate}
 
+
+
+\section{Proof of Progress Properties}
+\begin{enumerate}[PG1]
+\item
+$p.joining$ $\leadsto^*$ $p.thinking$ ($^*$ if its neighbors remain in the network long enough) 
+
+\indent After philosopher $p$ has started up, it has given itself the $joining$ state. Assuming that the neighbors in which $p$ knows about are running correctly and the network runs as expected and Assumption E\ref{Assump:E_guarantees_nodes_entering_network}, all other philosophers are bound to hear $p$'s request to join eventually and thus $p$ is guaranteed to be given the state $thinking$.
+
+\item  $p.hungry$ $\leadsto$ $p.eating$
+
+\indent When $hungry$, a philosopher $p$ must be passed the forks once all neighbor philosophers are not eating. TODO [Articulate this...but this is the idea]: Based on the acyclic graph property and our algorithm to make just-finished-eating processes have the lowest priority among their neighbors, we guarantee that the a hungry philosopher will eventually eat.
+
+\item 
+$p.leaving$ $\leadsto$ $p.gone$
+\end{enumerate}
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 \section{Appendix: Relevant Code}
