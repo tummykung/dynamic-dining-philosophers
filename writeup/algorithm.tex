@@ -112,9 +112,12 @@ and $f_{p, n_3}$ belongs to $n_3$.
 We categorize messages by its sender and its receiver:
 \subsubsection{From Philosophers to Philosophers}
 \begin{enumerate}
-\item a fork $f_{i,j}$: exactly one fork per one pair of neighboring processes $i$ and $j$. A fork can be dirty (represented by 0) or clean (represented by 1).
+\item a fork $f_{i,j}$: exactly one fork per one pair of neighboring processes $i$ and $j$. A fork can be dirty (the process holding it has lower prioirty) or clean (the process holding it has higher prioirty).
 \item a fork request. The sender philosopher should only send this when it is in the $hungry$ state and it does not hold a fork.
 \item a joining request. The sender philosopher, who should be in the joining state, once assigned by the external controller who to join, sends a joining request to each of its intended neighbors.
+\item a joining message acknowledgement.
+\item a leaving notification.
+\item a leaving message acknowledgement.
 \end{enumerate}
 
 \subsubsection{From External Controllers to Philosophers}
@@ -144,8 +147,10 @@ We categorize messages by its sender and its receiver:
 \end{figure}
 
 We will describe what would happen when a philosopher receives a fork.
+TODO: Add more details
+
 \begin{description}
-\item[(1) $p.joining$ $\to$ $p.thinking$:] After philosopher $p$ has started up, it has given itself the $joining$ state. Assuming that the neighbors in which $p$ knows about are running correctly and the network runs as expected, all other philosophers are bound to hear $p$'s request to join eventually and thus $p$ is guaranteed to be given the state $thinking$.
+\item[(1) $p.joining$ $\to$ $p.thinking$:] sends a joining request to all of its neighbors. Once it receives all joining message acknowledgments from all its neighbors, transition to the \textit{thinking} state.
 
 \item[(2) $p.thinking$ $\to$ $p.hungry$:]
 The philosopher checks to see if it holds all forks. If so, performs the transition. If not, sends requests to all forks it does not have.
@@ -159,9 +164,12 @@ When transitioning from $p.hungry$ to $p.eating$, the philosopher makes all fork
 The phisolopher sends any forks for which it received requests while eating.
 
 \item[(5) $(p.thinking \vee p.hungry \vee p.eating)$ $\to$ $p.leaving$:]
-The philosopher can immediately go to the $leaving$ state.
+The philosopher sends leaving notifications to all of its neighbors.
+Once received leaving notification acknowledgements from all of its neighbors,
+it can immediately go to the $leaving$ state.
 
 \item[(6) $p.leaving$ $\to$ $p.gone$:]
+Eventually
 \end{description}
 \subsection{Incoming Request Messages}
 When a fork message is received, the philosopher marks the fork as clean.
@@ -170,8 +178,27 @@ When a fork message is received, the philosopher marks the fork as clean.
 \item[During $p.hungry$] if the philosopher now holds all its forks, it transitions to $eating$ state.
 \end{description}
 \subsection{Incoming Fork Messages}
+TODO: Add more details
 
 
+\subsection{How a new philosopher informs its neighbors that it has joined the network}
+TODO: Add more details
+
+Sends joining requests to all of their neighbors
+
+\subsection{How a new philosopher knows that its neighbors are aware that it has joined the network}
+TODO: Add more details
+
+Waits for joining request acknowledgement messages from all of its neighbors.
+\subsection{How a philosopher informs its neighbors that it is leaving the network}
+TODO: Add more details
+
+Sends leaving notifications to all of their neighbors
+
+\subsection{How a philosopher knows that its neighbors are aware that it is leaving the network}
+TODO: Add more details
+
+Waits for leaving notification acknowledgements from all of its neighbors.
 
 \section{Allowed Assumptions}
 
@@ -264,7 +291,7 @@ $p.leaving$ $\leadsto$ $p.gone$
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 \section{Appendix: Relevant Code}
-
+NOTE: This is outdated.
 \begin{lstlisting}
 infinite_loop(Ref, Nodel, Neighbors) ->
     philosophize, Node} ! {self(), Ref, become_hungry},
