@@ -77,7 +77,7 @@ escapeinside={\%*}{*)} % if you want to add a comment within your code
 We need to develop and implement a protocol that allows nodes to join or leave a running dining philosophers network at runtime in an orderly fashion while maintaining an acyclic priority graph, ensuring safety, and preventing deadlock.
 \end{problem}
 
-Our solution is based on a hiegenic solution discussed in class. To avoid deadlocks, we maintain a priority graphs, in which the person with a higher priority gets to eat first when two of adjacent philosophers are hungry. We use a fork mechanism to represent the priority graph in a distributed fashion. There is exactly one fork per each edge between two nodes, where nodes represent philosophers. Each fork can be either \texttt{dirty} or \texttt{clean}. A clean fork implies that the person holding it has a higher priority than the person at the other end of an edge. Conversely, a dirty fork implies that the person holding it has a lower priority. In this assignment, we extend this algorithm to allow philosphers to join and leave the table, while still maintain the acyclic priority graph, ensuring safey, and preventing deadlock.
+Our solution is based on a hiegenic solution discussed in class. To avoid deadlocks, we maintain a priority graphs, in which the person with a higher priority gets to eat first when two of adjacent philosophers are hungry. We use a fork mechanism to represent the priority graph in a distributed fashion. There is exactly one fork per each edge between two nodes, where nodes represent philosophers. Each fork can be either \texttt{dirty} or \texttt{clean}. A \texttt{clean} fork implies that the person holding it has a higher priority than the person at the other end of an edge. Conversely, a \texttt{dirty} fork implies that the person holding it has a lower priority. In this assignment, we extend this algorithm to allow philosphers to join and leave the table, while still maintain the acyclic priority graph, ensuring safey, and preventing deadlock.
 
 
 \section{The Algorithm}
@@ -102,7 +102,7 @@ philosophize(<state>, Node, Neighbors, ForksList)
 In other words, a process $p$ contains the following information:
 \begin{enumerate}
 \item $p.state$ ($\langle\texttt{state}\rangle$): one of the six states outlined above.
-\item $p.id$ its process id ($\texttt{Node}$).
+\item $p.node$ its process node ($\texttt{Node}$), represented as a lowercase ASCII string with a machine name, separated by an @ symbol. (For example, \texttt{p1@ash}).
 \item $p.neighbors$ ($\texttt{Neighbors}$): a list of its neighboring processes $[n_1, n_2, \ldots, n_k]$.
 \item $p.fork\_states$ ($\texttt{ForkList}$): a list $[f_{p, n_1}, f_{p, n_2}, f_{p, n_3}, \ldots, f_{p, n_k}]$ of fork states for each its neighbors, in the same order as the neighboring list. The fork state can be either 0 or 1, where 1 means the fork belongs to $p$, where as 0 means the fork belongs to its corresponding neigbor. For example, if $p.neighbors = [n_1, n_2, n_3]$ and $p.fork\_states = [0, 1, 0],$ then the fork $f_{p, n_1}$ belongs to $p$; $f_{p, n_2}$ belongs to $n_2$;
 and $f_{p, n_3}$ belongs to $n_3$.
@@ -212,8 +212,9 @@ Waits for leaving notification acknowledgements from all of its neighbors.
 \end{enumerate}
 
 \subsection{Misc.}
-\begin{enumerate}[E4]
-\item Messages are never lost; sufficient time is allowed for a philosopher to bootstrap itself before other philosophers send it messages.
+\begin{enumerate}[E1]
+\setcounter{enumi}{3}
+\item \label{Assump:message_never_lost} Messages are never lost; sufficient time is allowed for a philosopher to bootstrap itself before other philosophers send it messages.
 \end{enumerate}
 
 
@@ -221,7 +222,7 @@ Waits for leaving notification acknowledgements from all of its neighbors.
 
 
 \subsection{Proof of Acyclic Priority Graph Invariance}
-The prioirity graph changes only in three possible cases.
+The prioirity graph changes only in three possible cases. \ref{Assump:message_never_lost}
 \begin{description}
 \item[Case 1: A new process joins the network.] In this case, the new process has the lowest priority. Thus, all its neighbors will have arrow point to it. Thus, if there were a cycle, such cycle could not possibly pass this new process. Since the original graph was acyclic, there could not be cycles elsewhere as well. Thus, the resulting priority graph is still acyclic.
 \item[Case 2: A process leaves the network.] A new priority graph is a subgraph of the original graph, and so the new graph cannot have cycles. If it were to have any cycles, these cycles would have presented in the original graph as well, which is not the case. Thus, the resulting priority network is acyclic.
