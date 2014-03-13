@@ -65,6 +65,42 @@ haveAllForks(Neighbors, ForksList) ->
             {ok, [{1,_}]} -> haveAllForks(tl(Neighbors), ForksList)
         end.
 
+% Constantly query neighbor philosophers to make sure that they are still
+% there. If one is gone, delete fork to that philosopher and remove from 
+% neighbors list, sufficiently removing the edge. Otherwise, keep
+% philosophizing. 
+% Code modified from http://stackoverflow.com/questions/9772357/monitoring-a-gen-server
+
+check_neighbors([])-> ok;
+check_neighbors([X|XS]) ->
+	%{ok,Proc} = gen_server:start(calc,[],[]),
+        spawn(?MODULE, monitor, [X]),
+	check_neighbors(XS).
+
+monitor(Proc) ->
+	erlang:monitor(process,Proc),
+	receive
+		{'DOWN', Ref, process, Pid,  normal} -> 
+			io:format("~p said that ~p died by natural causes~n",[Ref,Pid]);
+		{'DOWN', Ref, process, Pid,  Reason} ->
+			io:format("~p said that ~p died by unnatural causes~n~p",[Ref,Pid,Reason])
+	end.
+
+
+%check_neighbors([], Acc)-> Acc; 
+%check_neighbors([X|Neighbors], Acc)->
+%	io:format("~p Checking to see if Process ~p at node ~p is still philosohizing~n", [now(), node(), X]), 
+%        {philosopher, X} ! {node(), stillAwake},
+%	receive
+%		{Node, ok} ->
+%			io:format("~p Received reply from ~p~n", [now(), Node]),
+%			check_neighbors(Neighbors, Acc++X)
+%	after 5000 ->
+%	        io:format("~p is no longer in the group~n", [X]),
+%		check_neighbors(Neighbors, Acc)
+%	end.
+
+				
 %requests each neighbor to join the network, one at a time,
 %when joining there shouldn't be any other requests for forks or leaving going on
 %If another process requests to join during the joining phase, hold onto it until
@@ -111,7 +147,8 @@ philosophize(joining, Neighbors, ForkList)->
 %or get request for a fork
 philosophize(thinking, Neighbors, ForksList)->
   print("Thinking~n"),
-    receive
+  check_neighbors(Neighbors),  %% spawn processes to monitor neighbors once joined
+  receive
       % Told by exteranl controller to leave
      {NewNode, leaving} -> 
             print("~p left, removing him from lists", [NewNode]),
@@ -142,7 +179,12 @@ philosophize(thinking, Neighbors, ForksList)->
            ForkList = dict:append(NewNode, {1, "DIRTY"}, ForksList),
            {philosopher, NewNode} ! {node(), ok},
            philosophize(thinking, NewNeighbors, ForkList);
-        % We get a request for a fork, which we send since we don't need it       
+    % Another philosopher is checking if this philosopher is still running
+    {Node, stillAwake} ->
+           io:format("~p got stillAwake query from ~p~n",[now(), Node]),
+           {philosopher, Node} ! {node(), ok},
+           philosophize(thinking, Neighbors, ForksList);
+     % We get a request for a fork, which we send since we don't need it       
        {NewNode, requestFork} ->
            print("sending fork to ~p~n",[NewNode]),
            %delete the fork from the list send message
@@ -176,7 +218,12 @@ philosophize(eating, Neighbors, ForksList, Requests) ->
            ForkList = sendForks(Requests, ForksList),
            Pid ! {NewRef, fork},
            philosophize(thinking, Neighbors, ForkList);
-       % Another process requests to join 
+       % Another philosopher is checking if this philosopher is still running
+    	{Node, stillAwake} ->
+           io:format("~p got stillAwake query from ~p~n",[now(), Node]),
+           {philosopher, Node} ! {node(), ok},
+           philosophize(eating, Neighbors, ForksList);
+ % Another process requests to join 
        % Handle when another process wants to join us
        {NewNode, requestJoin} ->
             print("~p requested to join~n",[NewNode]),
@@ -221,7 +268,12 @@ philosophize(hungry, Neighbors, ForksList, RequestList, Pid, Ref)->
             dict:append(NewNode, [1, "DIRTY"], ForksList),
             {philosopher, NewNode} ! {node(), ok};
             % if someone requests a fork
-        % Check the priority and give the fork only if they have
+        % Another philosopher is checking if this philosopher is still running
+    	{Node, stillAwake} ->
+            io:format("~p got stillAwake query from ~p~n",[now(), Node]),
+            {philosopher, Node} ! {node(), ok},
+            philosophize(hungry, Neighbors, ForksList);
+ % Check the priority and give the fork only if they have
         % higher priority
         {NewNode, requestFork} -> 
             print("~p requested the fork~n",[NewNode]),
