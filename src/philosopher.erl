@@ -73,17 +73,20 @@ haveAllForks(Neighbors, ForksList) ->
 
 check_neighbors([], _)-> ok;
 check_neighbors([X|XS], ParentPid) ->
-	%{ok,Proc} = gen_server:start(calc,[],[]),
-        spawn(?MODULE, monitor, [X]),
-	check_neighbors(XS, ParentPid).
+        io:format("dsgsgs~n"),
+        spawn(?MODULE, monitor, [ParentPid, X]),
+        io:format("hi~n"),
+        check_neighbors(XS, ParentPid).
 
-monitor(Proc, ParentPid) ->
-	erlang:monitor(process,Proc),
-	receive
+monitor(ParentPid, Philosopher) ->
+    io:format("kkkkkk~n"),
+    erlang:monitor(process,self()),
+    io:format("ssssss~n"),
+    receive
 		{'DOWN', _Ref, process, _Pid,  normal} -> 
-			ParentPid ! {self(), check, Proc};
+			ParentPid ! {self(), check, Philosopher};
 		{'DOWN', _Ref, process, _Pid,  _Reason} ->
-			ParentPid ! {self(), missing, Proc}
+			ParentPid ! {self(), missing, Philosopher}
 	end.
 
 
