@@ -69,41 +69,23 @@ haveAllForks(Neighbors, ForksList) ->
 % there. If one is gone, delete fork to that philosopher and remove from 
 % neighbors list, sufficiently removing the edge. Otherwise, keep
 % philosophizing. 
-% Code modified from http://stackoverflow.com/questions/9772357/monitoring-a-gen-server
 
-check_neighbors([], _)-> ok;
-check_neighbors([X|XS], ParentPid) ->
-        io:format("dsgsgs~n"),
-        spawn(?MODULE, monitor, [ParentPid, X]),
-        io:format("hi~n"),
-        check_neighbors(XS, ParentPid).
+check_neighbors([])-> ok;
+check_neighbors([X|XS]) ->
+    spawn(fun() ->  monitor_neighbor(X, self()) end),
+    check_neighbors(XS).
 
-monitor(ParentPid, Philosopher) ->
-    io:format("kkkkkk~n"),
-    erlang:monitor(process,self()),
-    io:format("ssssss~n"),
-    receive
-		{'DOWN', _Ref, process, _Pid,  normal} -> 
-			ParentPid ! {self(), check, Philosopher};
-		{'DOWN', _Ref, process, _Pid,  _Reason} ->
-			ParentPid ! {self(), missing, Philosopher}
-	end.
+monitor_neighbor(Philosopher, ParentPid) ->
+    erlang:monitor(process,{philosopher, Philosopher}), %{RegName, Node}
+       receive
+        {'DOWN', _Ref, process, _Pid,  normal}  ->
+            io:format("fdgdf~n"),
+            ParentPid ! {self(), check, Philosopher};
+        {'DOWN', _Ref, process, _Pid,  _Reason} ->
+            io:format("dfgddfg~n"),
+            ParentPid ! {self(), missing, Philosopher}
+       end.
 
-
-%check_neighbors([], Acc)-> Acc; 
-%check_neighbors([X|Neighbors], Acc)->
-%	io:format("~p Checking to see if Process ~p at node ~p is still philosohizing~n", [now(), node(), X]), 
-%        {philosopher, X} ! {node(), stillAwake},
-%	receive
-%		{Node, ok} ->
-%			io:format("~p Received reply from ~p~n", [now(), Node]),
-%			check_neighbors(Neighbors, Acc++X)
-%	after 5000 ->
-%	        io:format("~p is no longer in the group~n", [X]),
-%		check_neighbors(Neighbors, Acc)
-%	end.
-
-				
 %requests each neighbor to join the network, one at a time,
 %when joining there shouldn't be any other requests for forks or leaving going on
 %If another process requests to join during the joining phase, hold onto it until
@@ -143,7 +125,7 @@ philosophize(joining, Neighbors, ForkList)->
     ForksList = requestJoin(Neighbors, ForkList),
     print("Requested to join everybody~n"),
     %% spawn processes to monitor neighbors once joined
-    check_neighbors(Neighbors, self()),
+    check_neighbors(Neighbors), 
     %now we start thinking
     philosophize(thinking, Neighbors, ForksList);
 
@@ -163,6 +145,7 @@ philosophize(thinking, Neighbors, ForksList)->
      {Pid, NewRef, leave} ->
            print("Leaving~n"),
            philosophize(leaving, Neighbors, ForksList, Pid, NewRef);
+     
      % Told to become hungry
      {Pid, NewRef, become_hungry} ->
            print("becoming hungry~n"),
@@ -176,7 +159,8 @@ philosophize(thinking, Neighbors, ForksList)->
               false -> print("Don't have all forks :(~n"),
                     philosophize(hungry, Neighbors, ForksList, [], Pid, NewRef)
            end;
-      % Another process requests to join
+     
+     % Another process requests to join
     {NewNode, requestJoin} ->
            print("~p requested to Join, accepting~n",[NewNode]),
            NewNeighbors = lists:append(Neighbors, [NewNode]),
@@ -184,13 +168,13 @@ philosophize(thinking, Neighbors, ForksList)->
            {philosopher, NewNode} ! {node(), ok},
            philosophize(thinking, NewNeighbors, ForkList);
     % Another philosopher is checking if this philosopher is still running
-    {Pid, missing, Who} ->
+    {_Pid, missing, Who} ->
            io:format("~p has gone missing!~n",[Who]),
            NewNeighbors = Neighbors -- [Who],
 	   ForkList = dict:erase(Who, ForksList),
 	   philosophize(thinking, NewNeighbors, ForkList);
     % monitor alerting that a leaving philosopher has left
-    {Pid, check, Who} ->
+    {_Pid, check, Who} ->
 	   io:format("~p has left for sure, more SPAGHETTI for me!~n", [Who]),
 	   NewNeighbors = Neighbors -- [Who],
 	   ForkList = dict:erase(Who, ForksList),
