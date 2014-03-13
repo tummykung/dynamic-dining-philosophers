@@ -70,19 +70,17 @@ haveAllForks(Neighbors, ForksList) ->
 % neighbors list, sufficiently removing the edge. Otherwise, keep
 % philosophizing. 
 
-check_neighbors([])-> ok;
-check_neighbors([X|XS]) ->
-    spawn(fun() ->  monitor_neighbor(X, self()) end),
-    check_neighbors(XS).
+check_neighbors([], _)-> ok;
+check_neighbors([X|XS], ParentPid) ->
+    spawn(fun() ->  monitor_neighbor(X, ParentPid) end),
+    check_neighbors(XS, ParentPid).
 
 monitor_neighbor(Philosopher, ParentPid) ->
     erlang:monitor(process,{philosopher, Philosopher}), %{RegName, Node}
        receive
         {'DOWN', _Ref, process, _Pid,  normal}  ->
-            io:format("fdgdf~n"),
             ParentPid ! {self(), check, Philosopher};
         {'DOWN', _Ref, process, _Pid,  _Reason} ->
-            io:format("dfgddfg~n"),
             ParentPid ! {self(), missing, Philosopher}
        end.
 
@@ -125,7 +123,7 @@ philosophize(joining, Neighbors, ForkList)->
     ForksList = requestJoin(Neighbors, ForkList),
     print("Requested to join everybody~n"),
     %% spawn processes to monitor neighbors once joined
-    check_neighbors(Neighbors), 
+    check_neighbors(Neighbors, self()), 
     %now we start thinking
     philosophize(thinking, Neighbors, ForksList);
 
@@ -169,13 +167,13 @@ philosophize(thinking, Neighbors, ForksList)->
            philosophize(thinking, NewNeighbors, ForkList);
     % Another philosopher is checking if this philosopher is still running
     {_Pid, missing, Who} ->
-           io:format("~p has gone missing!~n",[Who]),
+           print("~p has gone missing!~n",[Who]),
            NewNeighbors = Neighbors -- [Who],
 	   ForkList = dict:erase(Who, ForksList),
 	   philosophize(thinking, NewNeighbors, ForkList);
     % monitor alerting that a leaving philosopher has left
     {_Pid, check, Who} ->
-	   io:format("~p has left for sure, more SPAGHETTI for me!~n", [Who]),
+	   print("~p has left for sure, more SPAGHETTI for me!~n", [Who]),
 	   NewNeighbors = Neighbors -- [Who],
 	   ForkList = dict:erase(Who, ForksList),
 	   philosophize(thinking, NewNeighbors, ForkList);
@@ -215,13 +213,13 @@ philosophize(eating, Neighbors, ForksList, Requests) ->
            philosophize(thinking, Neighbors, ForkList);
       % Another philosopher is checking if this philosopher is still running
     {_Pid, missing, Who} ->
-           io:format("~p has gone missing!~n",[Who]),
+           print("~p has gone missing!~n",[Who]),
            NewNeighbors = Neighbors -- [Who],
 	   ForkList = dict:erase(Who, ForksList),
 	   philosophize(thinking, NewNeighbors, ForkList);
     % monitor alerting that a leaving philosopher has left
     {_Pid, check, Who} ->
-	   io:format("~p has left for sure, more SPAGHETTI for me!~n", [Who]),
+	   print("~p has left for sure, more SPAGHETTI for me!~n", [Who]),
 	   NewNeighbors = Neighbors -- [Who],
 	   ForkList = dict:erase(Who, ForksList),
 	   philosophize(thinking, NewNeighbors, ForkList);
@@ -272,13 +270,13 @@ philosophize(hungry, Neighbors, ForksList, RequestList, Pid, Ref)->
             % if someone requests a fork
          % Another philosopher is checking if this philosopher is still running
     	{Pid, missing, Who} ->
-           io:format("~p has gone missing!~n",[Who]),
+           print("~p has gone missing!~n",[Who]),
            NewNeighbors = Neighbors -- [Who],
 	   ForkList = dict:erase(Who, ForksList),
 	   philosophize(thinking, NewNeighbors, ForkList);
     % monitor alerting that a leaving philosopher has left
     	{Pid, check, Who} ->
-	   io:format("~p has left for sure, more SPAGHETTI for me!~n", [Who]),
+	   print("~p has left for sure, more SPAGHETTI for me!~n", [Who]),
 	   NewNeighbors = Neighbors -- [Who],
 	   ForkList = dict:erase(Who, ForksList),
 	   philosophize(thinking, NewNeighbors, ForkList);
