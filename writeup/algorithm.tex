@@ -1,4 +1,4 @@
-\documentclass[11pt]{article}
+ \documentclass[11pt]{article}
 \usepackage{amsmath, amssymb, enumerate, mathpazo, mathrsfs, fancyhdr, mathrsfs, graphicx, framed, float}
 \usepackage[tmargin = 1in, lmargin = 1.1in, rmargin = 1in, bmargin = 1in]{geometry}
 %%%%%%%%%%%%%%%%%%%%%%% IMPORTANT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -79,7 +79,7 @@ escapeinside={\%*}{*)} % if you want to add a comment within your code
 We need to develop and implement a protocol that allows nodes to join or leave a running dining philosophers network at runtime in an orderly fashion while maintaining an acyclic priority graph, ensuring safety, and preventing deadlock.
 \end{problem}
 
-Our solution is based on a hiegenic solution discussed in class. To avoid deadlocks, we maintain a priority graphs, in which the person with a higher priority gets to eat first when two of adjacent philosophers are hungry. We use a fork mechanism to represent the priority graph in a distributed fashion. There is exactly one fork per each edge between two nodes, where nodes represent philosophers. Each fork can be either \texttt{DIRTY} or \texttt{CLEAN}. A \texttt{CLEAN} fork implies that the person holding it has a higher priority than the person at the other end of an edge. Conversely, a \texttt{DIRTY} fork implies that the person holding it has a lower priority. In this assignment, we extend this algorithm to allow philosphers to join and leave the table, while still maintain the acyclic priority graph, ensuring safey, and preventing deadlock.
+Our solution is based on a hygienic solution discussed in class. To avoid deadlocks, we maintain a priority graphs, in which the person with a higher priority gets to eat first when two of adjacent philosophers are hungry. We use a fork mechanism to represent the priority graph in a distributed fashion. There is exactly one fork per each edge between two nodes, where nodes represent philosophers. Each fork can be either \texttt{DIRTY} or \texttt{CLEAN}. A \texttt{CLEAN} fork implies that the person holding it has a higher priority than the person at the other end of an edge. Conversely, a \texttt{DIRTY} fork implies that the person holding it has a lower priority. In this assignment, we extend this algorithm to allow philosophers to join and leave the table, while still maintain the acyclic priority graph, ensuring safety, and preventing deadlock.
 
 
 \section{The Algorithm}
@@ -106,7 +106,9 @@ In other words, a process $p$ contains the following information:
 \item $p.state$ ($\langle\texttt{state}\rangle$): one of the six states outlined above.
 \item $p.node$ its process node ($\texttt{Node}$), represented as a lowercase ASCII string with a machine name, separated by an @ symbol. (For example, \texttt{p1@ash}) We can always find out our nodename with node(), so it is not passed around.
 \item $p.neighbors$ ($\texttt{Neighbors}$): a list of its neighboring processes $[n_1, n_2, \ldots, n_k]$.
-\item $p.fork\_states$ ($\texttt{ForkList}$): a list $[f_{p, n_1}, f_{p, n_2}, f_{p, n_3}, \ldots, f_{p, n_k}]$ of fork states for each its neighbors, in the same order as the neighboring list. The fork is a 2-tuple $\{\texttt{holding}, \texttt{hygiene}\}$, where \texttt{holding} can be either 0 or 1, where 1 means the fork belongs to $p$, where as 0 means the fork belongs to its corresponding neigbor. The second element in the tuple is \texttt{holding}, which can be either \texttt{CLEAN}, \texttt{DIRTY}, or \texttt{SPAGHETTI} to establish the priority. A \texttt{CLEAN} fork implies that the person holding it has a higher priority than the person at the other end of an edge. Conversely, a \texttt{DIRTY} fork implies that the person holding it has a lower priority. A \texttt{SPAGHETTI} (or sometimes \texttt{SPAGHETTI SAUCE}) or something else indicates a placeholder. For example, if a \texttt{holding} is 0 (not holding fork), \texttt{hygiene} is not meaningful anymore. That is, \texttt{hygiene} has a meaning only when the philosopher is holding a fork.
+\item $p.fork\_states$ ($\texttt{ForkList}$): a list $[f_{p, n_1}, f_{p, n_2}, f_{p, n_3}, \ldots, f_{p, n_k}]$ of fork states for each its neighbors, in the same order as the neighboring list. The fork is a 2-tuple $\{holding, hygiene\}$, where \emph{holding} can be either 0 or 1, where 1 means the fork belongs to $p$, where as 0 means the fork belongs to its corresponding neighbor. The second element in the tuple is \emph{holding}, which can be either \texttt{CLEAN}, \texttt{DIRTY}, or \texttt{SPAGHETTI} to establish the priority. A \texttt{CLEAN} fork implies that
+
+the person holding it has a higher priority than the person at the other end of an edge. Conversely, a \texttt{DIRTY} fork implies that the person holding it has a lower priority. The value \texttt{SPAGHETTI} (or sometimes \texttt{SPAGHETTI SAUCE}) or something else indicates a placeholder. For example, if \emph{holding} is 0 (not holding fork), \emph{hygiene} is not meaningful anymore. That is, \emph{hygiene} has a meaning only when the philosopher is holding a fork.
 
 The corresponding global priority graph can be defined as follows. The nodes of the graph is the processes in the system graph, and there is a directed edge $(p, q)$ from $p$ to $q$ if and only if $p$ is a neighbor of $q$ in the system graph and $p$ has a higher priority than $q$.
 
@@ -117,11 +119,11 @@ For example, if $p.neighbors = [n_1, n_2, n_3]$ and $p.fork\_states = [\{0, \_\}
 We categorize messages by its sender and its receiver:
 \subsubsection{From Philosophers to Philosophers}
 \begin{enumerate}[M1]
-\item \label{M:fork} a fork $f_{i,j}$: exactly one fork per one pair of neighboring processes $i$ and $j$. A fork can be dirty (the process holding it has lower prioirty) or clean (the process holding it has higher prioirty).
-\item \label{M:fork_request} a fork request. The sender philosopher should only send this when it is in the $hungry$ state and it does not hold a fork.
-\item \label{M:joining_request} a joining request. The sender philosopher, who should be in the \textit{joining} state, once assigned by the external controller who to join, sends a joining request to each of its intended neighbors. When the receiver philosopher receives this message, it adds the sender to its neighbors list.
-\item \label{M:joining_ack} a joining message acknowledgement. Once a joining philosopher receives an acknowledgement from a neighbor that it sent a joining request to, it knows that the sender philosopher are aware of its joining. Once it knows that all intended neighbors are aware of its joining, it can transition to the \emph{thinking} state.
-\item \label{M:leaving_notification} a leaving notification. The sender philosopher, who should be in either the \textit{thinking}, \textit{hungry}, or \textit{eating} state, once signaled by an external controller to leave, it transitions to the leaving state and sends a leaving notification to all its neighbors.
+\item \label{M:fork} a fork: exactly one fork per one pair of neighboring processes. A fork can be \texttt{DIRTY} (the process holding it has lower priority) or \texttt{CLEAN} (the process holding it has higher priority).
+\item \label{M:fork_request} a fork request. The sending philosopher should only send this when it is in the $hungry$ state and it does not hold a fork.
+\item \label{M:joining_request} a joining request. The sending philosopher, who should be in the \textit{joining} state, once assigned by the external controller who to join, sends a joining request to each of its intended neighbors. When the receiving philosopher receives this message, it adds the sender to its neighbors list.
+\item \label{M:joining_ack} a joining message acknowledgement. Once a joining philosopher receives an acknowledgement from a neighbor that it sent a joining request to, it knows that the sending philosopher are aware of its joining. Once it knows that all intended neighbors are aware of its joining, it can transition to the \emph{thinking} state.
+\item \label{M:leaving_notification} a leaving notification. The sending philosopher, who should be in either the \textit{thinking}, \textit{hungry}, or \textit{eating} state, once signaled by an external controller to leave, it transitions to the leaving state and sends a leaving notification to all its neighbors.
 \item \label{M:leaving_ack} a leaving message acknowledgement. A philosopher, once received a leaving notification message, deletes the sender from its neighbors list, and immediately sends a leaving message acknowledgement to the sender.
 \end{enumerate}
 
@@ -130,20 +132,20 @@ We categorize messages by its sender and its receiver:
 \setcounter{enumi}{6}
 \item \label{M:become_hungry} a \texttt{become\_hungry} message. The philosopher should only receive this message while \textit{thinking}; when it does, it transitions to \textit{hungry}.
 \item \label{M:stop_eating} a \texttt{stop\_eating} message. The philosopher should only receive this message while \textit{eating}; when it does, it transitions to \textit{thinking}. Just before transitioning to thinking, it will immediately handle any previous requests for forks.
-\item \label{M:leave} a \texttt{leave} message. The philosopher can receive this message in any state other than \textit{joining}; when it does, it should ask for acknowledgment from all its neighbors that he is leaving, then immediately leave the network.
+\item \label{M:leave} a \texttt{leave} message. The philosopher can receive this message in any state other than \textit{joining}; when it does, it should ask for acknowledgment from all its neighbors to say that it is leaving, then immediately leaves the network by transitioning to \emph{gone}.
 \end{enumerate}
 
 \subsubsection{From Philosophers to External Controllers}
 \begin{enumerate}[M1]
 \setcounter{enumi}{9}
-\item an \texttt{eating} message. The philosopher should send this message, when it becomes \textit{eating}, to the controller that trigger its transition to \textit{hungry} (through the \texttt{become\_hungry} message).
-\item a \texttt{gone} message. When it becomes \textit{gone}, the philosopher should send this message to the controller that sent it the \texttt{leave} message that triggerred its departure.
+\item an \texttt{eating} message. The philosopher should send this message, when it becomes \textit{eating}, to the controller that triggered its transition to \textit{hungry} through the \texttt{become\_hungry} message.
+\item a \texttt{gone} message. When it becomes \textit{gone}, the philosopher should send this message to the controller that sent it the \texttt{leave} message that triggered its departure.
 \end{enumerate}
 
 \subsection{Initial Distributions of Forks}
 \begin{enumerate}
 \item All forks are dirty.
-\item Initially, the first philosopher has no fork. When another philosopher requests to be his neighbor, he sends a request. The receiving philosopher will create a dirty fork. This prevents cycles since there is a possibility that if the fork was clean, he would never give it up.
+\item Initially, the first philosopher has no fork. When another philosopher requests to be its neighbor, it sends a joining request. The receiving philosopher will create a dirty fork. This prevents cycles since there is a possibility that if the fork was clean, he would never give it up.
 \end{enumerate}
 
 \subsection{Actions before and after Transitions}
@@ -159,128 +161,118 @@ We will describe what would happen when a philosopher receives a fork.
 \begin{description}
 \item[(1) $p.joining$ $\to$ $p.thinking$:] sends a joining request to all of its neighbors. Once it receives all joining message acknowledgments from all its neighbors, transitions to the \textit{thinking} state.
 
-\item[(2) $p.thinking$ $\to$ $p.hungry$:] check to see if has already received a \texttt{become\_hungry} message from an external controller. If so, stores the identification of the external controller that triggerred it to become hungry, then transitions to the \textit{hungry} state. Once it becomes hungry, it sends a fork request to all neighbors that hold that forks that it needs.
+\item[(2) $p.thinking$ $\to$ $p.hungry$:] check to see if has already received a \texttt{become\_hungry} message from an external controller. If so, stores the identification of the external controller that triggered it to become \emph{hungry}, then transitions to the \textit{hungry} state. Once it becomes \emph{hungry}, it sends a fork request to all neighbors that hold that forks that it needs.
 
-\item[(3) $p.hungry$ $\to$ $p.eating$:] checks to see if it holds all forks. If so, performs the transition and sends an \texttt{eating} message to the external controller that triggerred it to become hungry and make all forks dirty, thereby making its priority lowest among all its neighbors. If not, it waits until it receives another fork and checks if he has them all again, until it actually has them all and transitions to \textit{eating}, then sends an \texttt{eating} message to the external controller that triggerred it to become hungry and make all forks dirty.
+\item[(3) $p.hungry$ $\to$ $p.eating$:] checks to see if it holds all forks. If so, performs the transition and sends an \texttt{eating} message to the external controller that triggered it to become \emph{hungry} and make all forks \texttt{DIRTY}, thereby making its priority lowest among all its neighbors. If not, it waits until it receives another fork and checks if he has them all again, until it actually has them all and transitions to \textit{eating}, then sends an \texttt{eating} message to the external controller that triggered it to become \emph{hungry} and make all forks \texttt{DIRTY}.
 
 \item[(4) $p.eating$ $\to$ $p.thinking$:] checks to see if it has already received a \texttt{stop\_eating} message from an external controller. If so, performs the transition and sends any forks for which it received requests while eating.
 
 \item[(5) $(p.thinking \vee p.hungry \vee p.eating)$ $\to$ $p.leaving$:] checks to see if it has already received a \texttt{leave} message from an external controller. If so, the philosopher transitions to the \textit{leaving} state and sends leaving notifications to all of its neighbors. 
 
 \item[(6) $p.leaving$ $\to$ $p.gone$:]
-Once it receives leaving notification acknowledgements from all of its neighbors to whom it sent leaving notifications, it transitions to the \textit{gone} state. At this stage, it knows that all of its neighbors are aware of its leaving and already deleted it from their neigbors list. With this knowledge, it then deletes all its neighbors from its neighbors list.
+once it receives leaving notification acknowledgements from all of its neighbors to whom it sent leaving notifications, it transitions to the \textit{gone} state. At this stage, it knows that all of its neighbors are aware of its leaving and already deleted it from their neighbors list. With this knowledge, it then deletes all its neighbors from its neighbors list.
 \end{description}
 
-Now we need to define what should happen when a philosopher $p$ receives an incoming message dependending on what state it currently is in.
+Now we need to define what should happen when a philosopher $p$ receives an incoming message depending on what state it currently is in.
 \subsection{Actions for Incoming Fork Messages (M\ref{M:fork})}
 When a fork message is received, the philosopher marks the fork as clean.
 \begin{description}
 \item[Received in the \textit{joining} state:] not possible.
 \item[Received in the \textit{thinking} state:] not possible.
-\item[Received in the \textit{hungry} state:] TODO.
+\item[Received in the \textit{hungry} state:] the process adds the fork to his list of forks marked as a \texttt{CLEAN} fork. It then checks if it has all the forks it needs to start eating, if not it will continue waiting for forks.
 \item[Received in the \textit{eating} state:] not possible, already had a fork.
-\item[Received in the \textit{leaving} state:] TODO.
+\item[Received in the \textit{leaving} state:] the process will ignore it since it send a message telling that process it's leaving. That process will eventually get the message and acknowledge the leaving process is leaving, removing that fork from the edge.
 \item[Received in the \textit{gone} state:] not possible.
 \end{description}
 \subsection{Actions for Incoming Fork Request Messages (M\ref{M:fork_request})}
 
 \begin{description}
-\item[Received in the \textit{joining} state:] Since all the joining nodes has all dirty forks, it will give the requested forks to the requesting philosophe.
+\item[Received in the \textit{joining} state:] Since all the joining nodes has all dirty forks, it will give the requested forks to the requesting philosopher.
 \item[Received in the \textit{thinking} state:] sends the requested fork to the requesting philosopher.
-\item[Received in the \textit{hungry} state:] if it now holds all its forks, it transitions to $eating$ state..
-\item[Received in the \textit{eating} state:] saves the request until it transitions to the thinking state. TODO: think about when it leaves
+\item[Received in the \textit{hungry} state:] checks whether the fork is \texttt{DIRTY} or \texttt{CLEAN}. If the fork is \texttt{DIRTY}, it sends the requested fork to the requesting philosopher, and if it's \texttt{CLEAN}, it holds onto it, and makes a note that the requesting philosopher wanted it.
+\item[Received in the \textit{eating} state:] saves the request until it transitions to the \emph{thinking} state. If the process leaves, the requesting process will get a leaving notification message and knows that that fork is no longer necessary to eat and delete that fork from its list.
 \item[Received in the \textit{leaving} state:] ignores.
 \item[Received in the \textit{gone} state:] not possible.
 \end{description}
 
 \subsection{Actions for Incoming Joining Request Messages (M\ref{M:joining_request})}
 \begin{description}
-\item[Received in the \textit{joining} state:] TODO.
-\item[Received in the \textit{thinking} state:] TODO.
-\item[Received in the \textit{hungry} state:] TODO.
-\item[Received in the \textit{eating} state:] TODO.
-\item[Received in the \textit{leaving} state:] TODO.
-\item[Received in the \textit{gone} state:] TODO.
+\item[Received in the \textit{joining} state:] holds onto the request until it successfully joins and transitioned to thinking. This prevents odd joining circles that lead to deadlocks.
+\item[Received in the \textit{thinking} state:] approves request and creates a dirty fork for the edge.
+\item[Received in the \textit{hungry} state:] approves request and creates a dirty fork for the edge.
+\item[Received in the \textit{eating} state:] approves request and creates a dirty fork for the edge.
+\item[Received in the \textit{leaving} state:] the assignment specifies that we do not have to handle this situation, the external controller should know better.
+\item[Received in the \textit{gone} state:] not possible
 \end{description}
 
 \subsection{Actions for Incoming Joining Message Acknowledgement Messages (M\ref{M:joining_ack})}
 \begin{description}
-\item[Received in the \textit{joining} state:] TODO.
-\item[Received in the \textit{thinking} state:] TODO.
-\item[Received in the \textit{hungry} state:] TODO.
-\item[Received in the \textit{eating} state:] TODO.
-\item[Received in the \textit{leaving} state:] TODO.
-\item[Received in the \textit{gone} state:] TODO.
-\end{description}
-
-\subsection{Actions for Incoming Fork Acknowledgement Messages (M\ref{M:joining_ack})}
-\begin{description}
-\item[Received in the \textit{joining} state:] TODO.
-\item[Received in the \textit{thinking} state:] TODO.
-\item[Received in the \textit{hungry} state:] TODO.
-\item[Received in the \textit{eating} state:] TODO.
-\item[Received in the \textit{leaving} state:] TODO.
-\item[Received in the \textit{gone} state:] TODO.
+\item[Received in the \textit{joining} state:] adds that neighbor to the forklist, saying you don't have the fork. Then it tries to contact the rest of your neighbors. Once all neighbors have sent it an \texttt{ok}, it can transition to the \emph{thinking} state.
+\item[Received in the \textit{thinking} state:] not possible.
+\item[Received in the \textit{hungry} state:] not possible.
+\item[Received in the \textit{eating} state:] not possible.
+\item[Received in the \textit{leaving} state:] not possible.
+\item[Received in the \textit{gone} state:] not possible.
 \end{description}
 
 \subsection{Actions for Incoming Leaving Notification Messages (M\ref{M:leaving_notification})}
 \begin{description}
-\item[Received in the \textit{joining} state:] TODO.
-\item[Received in the \textit{thinking} state:] TODO.
-\item[Received in the \textit{hungry} state:] TODO.
-\item[Received in the \textit{eating} state:] TODO.
-\item[Received in the \textit{leaving} state:] TODO.
-\item[Received in the \textit{gone} state:] TODO.
+\item[Received in the \textit{joining} state:] not possible, otherwise this problem is impossible. This is due to our Assumption
+\item[Received in the \textit{thinking} state:] removes the fork from the list and remove the neighbor from the list. It sends back \texttt{ok}.
+\item[Received in the \textit{hungry} state:] removes the fork from the list and removes the neighbor from the list. Then it checks if we have all the forks we need to eat. It sends back \texttt{ok}.
+\item[Received in the \textit{eating} state:] removes the fork from the list and removes the neighbor from the list. Then it continues eating. Sends back \texttt{ok}.
+\item[Received in the \textit{leaving} state:] removes the fork from the list and removes the neighbor from the list. It sends back \texttt{ok}.
+\item[Received in the \textit{gone} state:] not possible.
 \end{description}
 
 \subsection{Actions for Incoming Leaving Message Acknowledgement Messages (M\ref{M:leaving_ack})}
 \begin{description}
-\item[Received in the \textit{joining} state:] TODO.
-\item[Received in the \textit{thinking} state:] TODO.
-\item[Received in the \textit{hungry} state:] TODO.
-\item[Received in the \textit{eating} state:] TODO.
-\item[Received in the \textit{leaving} state:] TODO.
-\item[Received in the \textit{gone} state:] TODO.
+\item[Received in the \textit{joining} state:] not possible.
+\item[Received in the \textit{thinking} state:] not possible.
+\item[Received in the \textit{hungry} state:] not possible.
+\item[Received in the \textit{eating} state:] not possible.
+\item[Received in the \textit{leaving} state:] Try to contact the other neighbors, remove that neighbor from the list of neighbors.
+\item[Received in the \textit{gone} state:] not possible.
 \end{description}
 
 \subsection{Actions for Incoming \texttt{become\_hungry} Messages (M\ref{M:become_hungry})}
 \begin{description}
-\item[Received in the \textit{joining} state:] TODO.
-\item[Received in the \textit{thinking} state:] TODO.
-\item[Received in the \textit{hungry} state:] TODO.
-\item[Received in the \textit{eating} state:] TODO.
-\item[Received in the \textit{leaving} state:] TODO.
-\item[Received in the \textit{gone} state:] TODO.
+\item[Received in the \textit{joining} state:] not possible
+\item[Received in the \textit{thinking} state:] sends out requests to all neighbors for forks and then transition to hungry state.
+\item[Received in the \textit{hungry} state:] justs stay hungry.
+\item[Received in the \textit{eating} state:] not possible.
+\item[Received in the \textit{leaving} state:] not possible.
+\item[Received in the \textit{gone} state:] not possible.
 \end{description}
 
 \subsection{Actions for Incoming \texttt{stop\_eating} Messages (M\ref{M:stop_eating})}
 \begin{description}
-\item[Received in the \textit{joining} state:] TODO.
-\item[Received in the \textit{thinking} state:] TODO.
-\item[Received in the \textit{hungry} state:] TODO.
-\item[Received in the \textit{eating} state:] TODO.
-\item[Received in the \textit{leaving} state:] TODO.
-\item[Received in the \textit{gone} state:] TODO.
+\item[Received in the \textit{joining} state:] not possible.
+\item[Received in the \textit{thinking} state:] not possible.
+\item[Received in the \textit{hungry} state:] not possible.
+\item[Received in the \textit{eating} state:] stops eating, sends out the forks to all the processes that requested them, then transitions to the \emph{thinking} state.
+\item[Received in the \textit{leaving} state:] not possible.
+\item[Received in the \textit{gone} state:] not possible.
 \end{description}
 
 \subsection{Actions for Incoming \texttt{leave} Messages (M\ref{M:leave})}
 \begin{description}
 \item[Received in the \textit{joining} state:] not possible.
-\item[Received in the \textit{thinking} state:] TODO.
-\item[Received in the \textit{hungry} state:] TODO.
-\item[Received in the \textit{eating} state:] TODO.
-\item[Received in the \textit{leaving} state:] TODO.
+\item[Received in the \textit{thinking} state:] transitions to \emph{leaving}, which sends messages to all neighbors to say that it is leaving. Once all processes give \texttt{ok}, then it transitions to gone.
+\item[Received in the \textit{hungry} state:] transitions to \emph{leaving}, which sends message to all neighbors that he's leaving. Once all processes give \texttt{ok}, then it transitions to gone.
+\item[Received in the \textit{eating} state:] transitions to \emph{leaving}, which sends message to all neighbors that he's leaving. Once all processes give \texttt{ok}, then it transitions to gone.
+\item[Received in the \textit{leaving} state:] stay leaving.
 \item[Received in the \textit{gone} state:] not possible.
 \end{description}
 
 
 \subsection{How a new philosopher informs its neighbors that it has joined the network}
-Sends joining requests to all of their neighbors
+Sends joining requests to all of their neighbors.
 
 \subsection{How a new philosopher knows that its neighbors are aware that it has joined the network}
 Waits for joining request acknowledgement messages from all of its neighbors.
 \subsection{How a philosopher informs its neighbors that it is leaving the network}
-Sends leaving notifications to all of their neighbors
+Sends leaving notifications to all of their neighbors.
 
 \subsection{How a philosopher knows that its neighbors are aware that it is leaving the network}
 Waits for leaving notification acknowledgements from all of its neighbors.
@@ -288,18 +280,18 @@ Waits for leaving notification acknowledgements from all of its neighbors.
 \section{Allowed Assumptions}
 
 \subsection{External Controllers}
-\begin{enumerate}[E1]
-\item If a philosopher $p$ informs an external controller that it is \emph{eating}, the external controller will direct $p$ to become either \emph{thinking} or \emph{leaving} within a bounded time.
+\begin{enumerate}[\text{A}1]
+\item \label{A:finite_time_eating} If a philosopher $p$ informs an external controller that it is \emph{eating}, the external controller will direct $p$ to become either \emph{thinking} or \emph{leaving} within a bounded time.
 
-\item External controllers will not send duplicate or invalid control signals.
+\item \label{A:no_invalid_signals} External controllers will not send duplicate or invalid control signals.
 
-\item \label{Assump:E_guarantees_nodes_entering_network} If a process $p_1$ receives a joining request from another process $p_2$, external controllers will not send signals to ask $p_1$ to leave until $p_2$ successfully joins the network.
+\item \label{A:E_guarantees_nodes_entering_network} If a process $p_1$ receives a joining request from another process $p_2$, external controllers will not send signals to ask $p_1$ to leave until $p_2$ successfully joins the network.
 \end{enumerate}
 
 \subsection{Misc.}
-\begin{enumerate}[E1]
+\begin{enumerate}[\text{A}1]
 \setcounter{enumi}{3}
-\item \label{Assump:message_never_lost} Messages are never lost; sufficient time is allowed for a philosopher to bootstrap itself before other philosophers send it messages.
+\item \label{A:message_never_lost} Messages are never lost; sufficient time is allowed for a philosopher to bootstrap itself before other philosophers send it messages.
 \end{enumerate}
 
 
@@ -311,7 +303,7 @@ The prioirity graph changes only in three possible cases.
 \begin{description}
 \item[Case 1: A new process joins the network.] In this case, the new process has the lowest priority. Thus, all its neighbors will have arrow point to it. Thus, if there were a cycle, such cycle could not possibly pass this new process. Since the original graph was acyclic, there could not be cycles elsewhere as well. Thus, the resulting priority graph is still acyclic.
 \item[Case 2: A process leaves the network.] A new priority graph is a subgraph of the original graph, and so the new graph cannot have cycles. If it were to have any cycles, these cycles would have presented in the original graph as well, which is not the case. Thus, the resulting priority network is acyclic.
-\item[Case 3: A process eats.] In this case, based on our hiegenic algorithm, such process will then have the lowest priority among all its neighbors. Thus, all the arrow points to it. If there were a cycle, such cycle could not possibly pass this process. Since the original graph was acyclic, there could not be cycles elsewhere as well. Thus, the resulting priority graph is still acyclic.
+\item[Case 3: A process eats.] In this case, based on our hygienic algorithm, such process will then have the lowest priority among all its neighbors. Thus, all the arrow points to it. If there were a cycle, such cycle could not possibly pass this process. Since the original graph was acyclic, there could not be cycles elsewhere as well. Thus, the resulting priority graph is still acyclic.
 \end{description}
 
 \subsection{Proof of Safety Properties}
@@ -362,7 +354,7 @@ Before the philosopher $q$ can leave or remove a neighbor $p$ who is either $thi
 \item {\it p.gone} $\Rightarrow \langle \forall q  \rhd p\not\in q.neighbors \rangle$
 (when a philosopher $p$ is $gone$, it is not in any other philosopher's set of neighbors)
 
-From the property S\ref{S:mutual_neighbors}, we know that if $q$ is $thinking$, $hungry$, or $eating$, it must
+If $p$ is \emph{gone}, from our algorithm we know that $p.neighbors = \emptyset$. From this fact and from the safety property S\ref{S:mutual_neighbors}, we know that if $q$ is $thinking$, $hungry$, or $eating$, then $p$ cannot be a neighbor $q$. If $q$ is \emph{leaving} or \emph{gone}, $q.neighbors = \emptyset$ so $p\not\in q.neighbors.$ If $q$ is \emph{joining}, $p$ cannot possibly be a neighbor of $q$ due to our Assumption A\ref{A:E_guarantees_nodes_entering_network} that guarantees joining philosophers to be able to enter the network. Hence, we have covered all cases.
 
 \end{enumerate}
 
@@ -373,14 +365,17 @@ From the property S\ref{S:mutual_neighbors}, we know that if $q$ is $thinking$, 
 \item
 $p.joining$ $\leadsto^*$ $p.thinking$ ($^*$ if its neighbors remain in the network long enough) 
 
-\indent After philosopher $p$ has started up, it has given itself the $joining$ state. Assuming that the neighbors in which $p$ knows about are running correctly and the network runs as expected and Assumption E\ref{Assump:E_guarantees_nodes_entering_network}, all other philosophers are bound to hear $p$'s request to join eventually and thus $p$ is guaranteed to be given the state $thinking$.
+\indent After philosopher $p$ has started up, it has given itself the $joining$ state. Assuming that the neighbors in which $p$ knows about are running correctly and the network runs as expected and Assumption A\ref{A:E_guarantees_nodes_entering_network}, all other philosophers are bound to hear $p$'s request to join eventually and thus $p$ is guaranteed to be given the state $thinking$.
 
 \item  $p.hungry$ $\leadsto$ $p.eating$
 
-\indent When $hungry$, a philosopher $p$ must be passed the forks once all neighbor philosophers are not eating. TODO [Articulate this...but this is the idea]: Based on the acyclic graph property and our algorithm to make just-finished-eating processes have the lowest priority among their neighbors, we guarantee that the a hungry philosopher will eventually eat.
+\indent When $hungry$, a philosopher $p$ sends fork requests to all its neighbors from which it needs forks. Due to our Assumption A\ref{A:finite_time_eating}, we know that an \emph{eating} philosopher will take a finite time. When a neighboring \emph{eating} philosopher finished eating, it processes the fork request from $p$. Because our algorithm makes just-finished-eating processes have the lowest priority among their neighbors (in particular, $p$) by making the fork \texttt{DIRTY}, they cannot hold on to that fork and must pass the fork to $p$. Thus, eventually $p$ will have all the forks it needs, so it can eventually becomes \emph{eating}.
+
 
 \item 
 $p.leaving$ $\leadsto$ $p.gone$
+When $p$ is in the \emph{leaving} state, it sends leaving notifications to all its neighbors. Since messages are never lost, all of its neigbors will eventually get the messages and send acknowledgements back. Once it receives all acknowledgements, it can transition to \emph{gone}.
+
 \end{enumerate}
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
