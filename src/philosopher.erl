@@ -68,7 +68,8 @@ haveAllForks(Neighbors, ForksList) ->
 % Constantly query neighbor philosophers to make sure that they are still
 % there. If one is gone, delete fork to that philosopher and remove from 
 % neighbors list, sufficiently removing the edge. Otherwise, keep
-% philosophizing. 
+% philosophizing. The handling of a neighbor's leaving takes place in 
+% the philosophize method
 
 check_neighbors([], _)-> ok;
 check_neighbors([X|XS], ParentPid) ->
